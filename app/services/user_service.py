@@ -16,11 +16,11 @@ def get_or_create_user():
         new_id = str(uuid.uuid4())
 
         db.execute(text("""
-            INSERT INTO users (id, name)
-            VALUES (:id, :name)
+            INSERT INTO users (id, email)
+            VALUES (:id, :email)
         """), {
             "id": new_id,
-            "name": "guest"
+            "email": "guest@example.com"
         })
 
         db.commit()

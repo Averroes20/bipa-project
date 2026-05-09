@@ -20,12 +20,20 @@ def extract_features(audio, sr):
 
     # Baru normalize untuk comparison
     energy = z_score_normalize(energy_raw)
+    
+    pitch_mean = float(np.mean(pitch)) if len(pitch) else 0.0
+    pitch_range = float(np.max(pitch) - np.min(pitch)) if len(pitch) else 0.0
+    energy_mean = float(np.mean(energy_raw)) if len(energy_raw) else 0.0
 
     duration = librosa.get_duration(y=audio, sr=sr)
 
     return {
         "pitch": pitch.tolist(),
         "energy": energy.tolist(),
+
+        "pitch_mean": pitch_mean,
+        "pitch_range": pitch_range,
+        "energy_mean": energy_mean,
         "duration": float(duration),
-        "pause_ratio": float(pause_ratio)
+        "pause_ratio": float(pause_ratio),
     }

@@ -11,7 +11,7 @@ def map_analysis_data(user_id, features, scores, embedding_scores, user_emb, ai_
     import json
 
     return {
-        "user_id": user_id,
+        "user_id": str(user_id),
         "gender_label": None,
 
         "pitch_mean": float(features.get("pitch_mean", 0) or 0),

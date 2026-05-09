@@ -6,6 +6,7 @@ import os
 
 DATASET_PATH = "dataset/native"
 CACHE_PATH = "dataset/cache.pkl"
+DATASET_CACHE = None
 
 def preprocess_dataset():
     dataset = {
@@ -15,8 +16,8 @@ def preprocess_dataset():
         "female_embeddings": []
     }
 
-    for gender in ["male", "female"]:
-        folder = os.path.join(DATASET_PATH, gender)
+    for gender_label in ["male", "female"]:
+        folder = os.path.join(DATASET_PATH, gender_label)
 
         for file in os.listdir(folder):
             path = os.path.join(folder, file)
@@ -25,14 +26,23 @@ def preprocess_dataset():
 
             # 🎧 feature
             features = feature_extraction.extract_features(audio, sr)
-            dataset[gender].append(features)
+            dataset[gender_label].append(features)
 
             # 🤖 embedding
             emb = embedding.extract_embedding(audio, sr)
-            dataset[f"{gender}_embeddings"].append(emb)
+            dataset[f"{gender_label}_embeddings"].append(emb)
 
     # cache
     with open(CACHE_PATH, "wb") as f:
         pickle.dump(dataset, f)
 
     return dataset
+
+
+def get_dataset():
+    global DATASET_CACHE
+
+    if DATASET_CACHE is None:
+        DATASET_CACHE = preprocess_dataset()
+
+    return DATASET_CACHE

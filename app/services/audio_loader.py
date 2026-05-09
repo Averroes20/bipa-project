@@ -10,6 +10,17 @@ def load_audio(file):
     - file path (string)
     """
 
+    if isinstance(file, str):
+        audio_22k, sr_22k = librosa.load(file, sr=22050)
+        audio_16k, sr_16k = librosa.load(file, sr=16000)
+
+        return {
+            "audio_22k": audio_22k,
+            "sr_22k": sr_22k,
+            "audio_16k": audio_16k,
+            "sr_16k": sr_16k
+        }
+
     # CASE 1: UploadFile
     if hasattr(file, "file"):
         data = file.file.read()
@@ -17,11 +28,6 @@ def load_audio(file):
     # CASE 2: file-like (BufferedReader)
     elif hasattr(file, "read"):
         data = file.read()
-
-    # CASE 3: path string
-    elif isinstance(file, str):
-        return librosa.load(file, sr=16000)
-
     else:
         raise ValueError("Unsupported file type")
 

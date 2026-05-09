@@ -1,7 +1,10 @@
-from fastapi import APIRouter, UploadFile, File
+from fastapi import APIRouter, Depends, UploadFile, File
+from app.services import db
 from app.services.db_ops import save_analysis,map_analysis_data
-from app.services.similiarity import search_similar
+from app.services.progress_service import update_user_progress
 from app.utils.json_safe import to_python
+from app.services.reference_service import get_dataset_reference_from_db
+from app.services.interpretation import generate_feedback_v2
 from app.services import (
     audio_loader,
     feature_extraction,
@@ -13,23 +16,24 @@ from app.services import (
     llm
 )
 from app.services.comparison import compare_embedding
+from app.services.vector_service import compute_embedding_score, get_top_k_from_db
+from app.services.dataset_service import rebuild_dataset_referennce
 from fastapi import WebSocket
 from app.services.db import SessionLocal
 from sqlalchemy import text
-from app.services.user_service import get_or_create_user
+from app.core.deps import get_current_user
 
 router = APIRouter()
 
 @router.post("/analyze")
-async def analyze_audio(file: UploadFile = File(...), user_id: str = None):
-
-     # 🔥 AUTO HANDLE USER
-    user_id = user_id or get_or_create_user()
-
+async def analyze_audio(
+    file: UploadFile = File(...),
+    user_id: str = Depends(get_current_user)
+):
     # 🎧 Load audio
     audio_data = audio_loader.load_audio(file)
 
-    # 🎧 Feature (DTW)
+    # 🎧 Feature
     user_features = feature_extraction.extract_features(
         audio_data["audio_22k"],
         audio_data["sr_22k"]
@@ -41,35 +45,47 @@ async def analyze_audio(file: UploadFile = File(...), user_id: str = None):
         audio_data["sr_16k"]
     )
 
-    # 📂 Dataset
-    dataset = dataset_loader.preprocess_dataset()
+    # # 📂 Cached dataset
+    # dataset = dataset_loader.get_dataset()
 
-    # 🔍 DTW
-    comparison_result = comparison.compare(user_features, dataset)
+    # # 🔍 DTW
+    # comparison_result = comparison.compare(user_features, dataset)
 
-    # 🤖 Embedding compare
-    embedding_scores = {
-        "male": compare_embedding(user_emb, dataset["male_embeddings"]),
-        "female": compare_embedding(user_emb, dataset["female_embeddings"])
+    male_candidates = get_top_k_from_db(user_emb, k=10, gender="male")
+    female_candidates = get_top_k_from_db(user_emb, k=10, gender="female")
+
+    dataset_filtered = {
+        "male": male_candidates,
+        "female": female_candidates
     }
 
-    # 📊 Scoring
+    comparison_result = comparison.compare(user_features, dataset_filtered)
+
+    # 🤖 Embedding
+    embedding_scores = {
+        "male": compute_embedding_score(user_emb, dataset_filtered["male"]),
+        "female": compute_embedding_score(user_emb, dataset_filtered["female"])
+    }
+
+
+    # 📊 Score
     score_result = scoring.compute_score(
         comparison_result,
         embedding_scores
     )
 
-    # 💬 Rule-based feedback
-    feedback = interpretation.generate_feedback(score_result)
+    # 💬 Feedback
+    dataset_reference = get_dataset_reference_from_db()
 
-    # 🤖 AI feedback
+    feedback = generate_feedback_v2(user_features, dataset_reference)
+
     ai_feedback = llm.generate_natural_feedback({
         "features": user_features,
         "scores": score_result,
         "rule_based": feedback
     })
 
-    # 🧠 Mapping data (🔥 INI YANG TADI LO TANYA)
+    # 💾 Save
     data = map_analysis_data(
         user_id,
         user_features,
@@ -79,10 +95,13 @@ async def analyze_audio(file: UploadFile = File(...), user_id: str = None):
         ai_feedback
     )
 
-    # 💾 Save ke DB
     save_analysis(data)
 
-    # 🎯 Response
+    update_user_progress(
+        user_id,
+        score_result["overall"]
+    )
+
     return to_python({
         "score": score_result["overall"],
         "male": score_result["male"],
@@ -94,9 +113,8 @@ async def analyze_audio(file: UploadFile = File(...), user_id: str = None):
 
 @router.post("/rebuild-dataset")
 def rebuild_dataset():
-    from app.services.dataset_loader import preprocess_dataset
-    preprocess_dataset()
-    return {"status": "dataset rebuilt"}
+    rebuild_dataset_referennce()
+    return {"status": "dataset reference rebuilt"}
 
 @router.websocket("/ws/audio")
 async def audio_stream(websocket: WebSocket):
@@ -116,27 +134,92 @@ async def audio_stream(websocket: WebSocket):
 def dashboard_summary():
     db = SessionLocal()
 
-    result = db.execute("""
-        SELECT
-            AVG(final_score) as avg_score,
-            COUNT(*) as total_sessions,
-            AVG(pitch_mean) as avg_pitch
-        FROM audio_analysis
-    """)
+    try:
+        result = db.execute(text("""
+            SELECT
+                AVG(final_score) as avg_score,
+                COUNT(*) as total_sessions,
+                AVG(pitch_mean) as avg_pitch
+            FROM audio_analysis
+        """))
+        row = result.mappings().fetchone()
+        return dict(row) if row else {}
+    
+    finally:
+        db.close()
 
-    return dict(result.fetchone())
 
 @router.get("/user/{user_id}/progress")
-def user_progress(user_id: str):
+def user_progress(user_id: str = Depends(get_current_user)):
     db = SessionLocal()
 
-    result = db.execute(text(f"""
-        SELECT
-            AVG(final_score) as avg_score,
-            MAX(final_score) as best_score,
-            COUNT(*) as sessions
-        FROM audio_analysis
-        WHERE user_id = :user_id
-    """))
+    try:
+        result = db.execute(
+            text("""
+                SELECT
+                    AVG(final_score) as avg_score,
+                    MAX(final_score) as best_score,
+                    COUNT(*) as sessions
+                FROM audio_analysis
+                WHERE user_id = :user_id
+            """),
+            {"user_id": user_id}
+        )
 
-    return dict(result.fetchone())
+        row = result.mappings().fetchone()
+        return dict(row) if row else {}
+
+    finally:
+        db.close()
+
+@router.post("/analytics/rebuild")
+def rebuild_analytics():
+    from app.services.analytics_service import rebuild_global_statistics
+    rebuild_global_statistics()
+    return {"status": "analytics rebuilt"}
+
+@router.get("/analytics/global")
+def get_global():
+    db = SessionLocal()
+
+    try:
+        user_stats = db.execute(text("""
+            SELECT gender_label, pitch_mean, energy_mean, pause_ratio, duration
+            FROM global_statistics
+        """)).fetchall()
+
+        native_stats = db.execute(text("""
+            SELECT gender_label, pitch_mean, energy_mean, pause_ratio, duration
+            FROM dataset_reference
+        """)).fetchall()
+
+        def to_dict(rows):
+            return {
+                r[0]: {
+                    "pitch_mean": float(r[1]),
+                    "energy_mean": float(r[2]),
+                    "pause_ratio": float(r[3]),
+                    "duration": float(r[4])
+                }
+                for r in rows
+            }
+        
+        user = to_dict(user_stats)
+        native = to_dict(native_stats)
+
+        gap = {}
+        for g in user:
+            if g in native:
+                gap[g] = {
+                    k: user[g][k] - native[g][k]
+                    for k in user[g]
+                }
+
+        return{
+            "user": user,
+            "native": native,
+            "gap": gap
+        }
+    
+    finally:
+        db.close()

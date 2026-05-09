@@ -16,16 +16,12 @@ def smooth_pitch(pitch, kernel_size=5):
     smoothed = medfilt(pitch, kernel_size=kernel_size)
     return smoothed
 
-def z_score_normalize(arr):
-    arr = np.array(arr)
+def z_score_normalize(x):
+    x = np.array(x)
 
-    if len(arr) == 0:
-        return arr
-
-    mean = np.mean(arr)
-    std = np.std(arr)
+    std = np.std(x)
 
     if std == 0:
-        return arr
+        return np.zeros_like(x)  # 🔥 FIX
 
-    return (arr - mean) / std
+    return (x - np.mean(x)) / std
