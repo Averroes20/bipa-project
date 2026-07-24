@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../bipa_fe/bipa-fe"
+		},
+		{
+			"path": "../Prompt"
+		}
+	],
+	"settings": {}
+}
