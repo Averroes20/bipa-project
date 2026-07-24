@@ -1,0 +1,77 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Compiled extensions
+*.so
+
+# =========================
+# Virtual Environment
+# =========================
+venv/
+.env/
+.venv/
+
+# =========================
+# Environment Variables
+# =========================
+.env
+.env.*
+
+# =========================
+# VSCode
+# =========================
+.vscode/
+
+# =========================
+# Pytest / Coverage
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# Build files
+# =========================
+build/
+dist/
+*.egg-info/
+
+# =========================
+# Uploads / Dataset
+# =========================
+uploads/
+dataset/
+
+# Kalau mau tetap simpan foldernya:
+# uploads/*
+# !uploads/.gitkeep
+
+# dataset/*
+# !dataset/.gitkeep
+
+# =========================
+# Audio Files
+# =========================
+*.wav
+*.mp3
+*.flac
+
+# =========================
+# OS Files
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
