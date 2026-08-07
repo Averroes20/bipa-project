@@ -1,6 +1,9 @@
 import numpy as np
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import math
+import parselmouth
+from parselmouth.praat import call
+from app.core.logger import logger
 
 def classify_vowel(f1: float, f2: float) -> str:
     # Indonesian Vowel Approximation mapping based on F1/F2 (Hz)
@@ -79,5 +82,5 @@ class FormantAnalysisService:
             }
 
         except Exception as e:
-            print("Formant extraction skipped or error:", e)
+            logger.error(f"Formant extraction skipped or error: {e}")
             return {"vowelSpace": []}

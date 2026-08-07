@@ -90,35 +90,87 @@ class AnalysisRepository:
         self.db.commit()
 
     def get_top_k_candidates(self, user_emb: Any, k: int = 10, gender: Optional[str] = None) -> List[Any]:
-        """Fetch top K candidates from dataset_reference vector DB."""
+        """Fetch top K candidates from dataset_feature vector DB."""
         try:
             emb_arr = user_emb.tolist() if hasattr(user_emb, "tolist") else user_emb
             pg_vector_str = "[" + ",".join(map(str, emb_arr)) + "]"
 
-            base_query = "SELECT * FROM dataset_reference"
+            base_query = """
+                SELECT c.pitch_contour, c.energy_contour, f.embedding_vector 
+                FROM dataset_feature f
+                JOIN dataset_audio a ON a.id = f.audio_id
+                LEFT JOIN dataset_contour c ON c.audio_id = a.id
+            """
             params: Dict[str, Any] = {"user_emb": pg_vector_str, "k": k}
 
             if gender:
-                base_query += " WHERE gender_label = :gender"
+                base_query += " WHERE a.gender = :gender"
                 params["gender"] = gender
 
-            base_query += " ORDER BY embedding_vector <-> :user_emb LIMIT :k"
+            base_query += " ORDER BY f.embedding_vector::vector <-> :user_emb::vector LIMIT :k"
 
             result = self.db.execute(text(base_query), params)
-            return result.fetchall()
+            rows = result.fetchall()
+            
+            candidates = []
+            for row in rows:
+                try:
+                    pitch_contour = row[0] if row[0] else []
+                    if isinstance(pitch_contour, str):
+                        pitch_contour = json.loads(pitch_contour)
+                    energy_contour = row[1] if row[1] else []
+                    if isinstance(energy_contour, str):
+                        energy_contour = json.loads(energy_contour)
+                    # row[2] is the embedding_vector
+                    candidates.append({
+                        "pitch_contour": pitch_contour,
+                        "energy_contour": energy_contour,
+                        "embedding_vector": row[2]
+                    })
+                except Exception:
+                    pass
+            return candidates
         except Exception as e:
-            # Fallback if dataset_reference table doesn't have pgvector extension or is empty
-            query = text("SELECT * FROM dataset_reference" + (" WHERE gender_label = :gender" if gender else "") + " LIMIT :k")
+            self.db.rollback()
+            # Fallback
+            query = text("""
+                SELECT c.pitch_contour, c.energy_contour, f.embedding_vector 
+                FROM dataset_feature f
+                JOIN dataset_audio a ON a.id = f.audio_id
+                LEFT JOIN dataset_contour c ON c.audio_id = a.id
+            """ + (" WHERE a.gender = :gender" if gender else "") + " LIMIT :k")
             params = {"k": k}
             if gender:
                 params["gender"] = gender
             res = self.db.execute(query, params)
-            return res.fetchall()
+            rows = res.fetchall()
+            candidates = []
+            for row in rows:
+                try:
+                    pitch_contour = row[0] if row[0] else []
+                    if isinstance(pitch_contour, str):
+                        pitch_contour = json.loads(pitch_contour)
+                    energy_contour = row[1] if row[1] else []
+                    if isinstance(energy_contour, str):
+                        energy_contour = json.loads(energy_contour)
+                    candidates.append({
+                        "pitch_contour": pitch_contour,
+                        "energy_contour": energy_contour,
+                        "embedding_vector": row[2]
+                    })
+                except Exception:
+                    pass
+            return candidates
 
     def get_dataset_reference(self) -> Dict[str, Any]:
         """Fetches male/female reference baseline statistics."""
         try:
-            result = self.db.execute(text("SELECT gender_label, pitch_mean, energy_mean, pause_ratio, duration FROM dataset_reference")).fetchall()
+            result = self.db.execute(text("""
+                SELECT a.gender, AVG(f.pitch_mean), AVG(f.energy_mean), AVG(f.pause_ratio), AVG(a.duration) 
+                FROM dataset_audio a
+                LEFT JOIN dataset_feature f ON f.audio_id = a.id
+                GROUP BY a.gender
+            """)).fetchall()
             dataset_ref = {}
             for r in result:
                 gender = r[0] if r[0] else "unknown"
@@ -273,3 +325,7 @@ class AnalysisRepository:
                 pass
         return None
 
+    def clear_speech_corpus(self) -> None:
+        from app.models.dataset_models import DatasetAudio
+        self.db.query(DatasetAudio).delete()
+        self.db.commit()

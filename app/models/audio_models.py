@@ -69,3 +69,66 @@ class UserPhonemeSummary(Base):
     accuracy = Column(Float, default=0.0)
     
     last_updated = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+class AnalysisWord(Base):
+    __tablename__ = "analysis_word"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    analysis_id = Column(String, index=True)
+    
+    word = Column(String, nullable=False)
+    start_time = Column(Float, default=0.0)
+    end_time = Column(Float, default=0.0)
+    confidence = Column(Float, default=0.0)
+    
+    pronunciation_score = Column(Float, default=0.0)
+    pitch_score = Column(Float, default=0.0)
+    energy_score = Column(Float, default=0.0)
+    duration_score = Column(Float, default=0.0)
+    stress_score = Column(Float, default=0.0)
+    overall_score = Column(Float, default=0.0)
+    
+class AnalysisPhoneme(Base):
+    __tablename__ = "analysis_phoneme"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    word_id = Column(String, index=True) # Foreign key to AnalysisWord concept
+    analysis_id = Column(String, index=True)
+    
+    phoneme = Column(String, nullable=False)
+    start_time = Column(Float, default=0.0)
+    end_time = Column(Float, default=0.0)
+    confidence = Column(Float, default=0.0)
+    pronunciation_score = Column(Float, default=0.0)
+    feedback = Column(Text, nullable=True)
+
+class AnalysisPronunciation(Base):
+    __tablename__ = "analysis_pronunciation"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    analysis_id = Column(String, index=True)
+    
+    mispronounced_word = Column(String, nullable=False)
+    score = Column(Float, default=0.0)
+    reason = Column(Text, nullable=True)
+
+class AnalysisIntonation(Base):
+    __tablename__ = "analysis_intonation"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    analysis_id = Column(String, index=True)
+    
+    similarity_score = Column(Float, default=0.0)
+    dtw_distance = Column(Float, default=0.0)
+    correlation = Column(Float, default=0.0)
+    slope_diff = Column(Float, default=0.0)
+    user_contour = Column(Text, nullable=True) # JSON array
+    native_contour = Column(Text, nullable=True) # JSON array
+
+class AnalysisFeedback(Base):
+    __tablename__ = "analysis_feedback"
+    
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    analysis_id = Column(String, index=True)
+    
+    ai_teacher_feedback = Column(Text, nullable=True)

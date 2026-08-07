@@ -5,6 +5,8 @@ from typing import Any, Union, AsyncGenerator
 from sqlalchemy.orm import Session
 from app.utils.json_safe import to_python
 from app.repositories.analysis_repository import AnalysisRepository
+from app.schemas.analysis_response import AnalysisResponse
+from app.core.logger import logger
 
 from app.services.pipeline.audio_preprocessing import AudioPreprocessingService
 from app.services.pipeline.alignment_service import AlignmentService
@@ -12,6 +14,12 @@ from app.services.pipeline.pitch_service import PitchAnalysisService
 from app.services.pipeline.formant_service import FormantAnalysisService
 from app.services.pipeline.feature_service import FeatureExtractionService
 from app.services.pipeline.scoring_service import PronunciationService, ScoringService
+from app.services.pipeline.vowel_service import VowelAnalysisService
+from app.services.pipeline.articulation_service import ArticulationAnalysisService
+from app.services.pipeline.accent_service import AccentAnalysisService
+from app.services.pipeline.intonation_service import IntonationAnalysisService
+from app.services.pipeline.phoneme_detection_service import PhonemeDetectionService
+from app.services.pipeline.feedback_service import FeedbackService
 from app.services.pipeline.recommendation_service import RecommendationService
 
 class BIPAEvaluator:
@@ -50,11 +58,18 @@ class BIPAEvaluator:
         
         errors_data = PronunciationService.detect_errors(target_text, alignment_data["words"], alignment_data["phonemes"])
         errors = errors_data["word_errors"]
-        phoneme_errors = errors_data["phoneme_errors"]        
-        native_sim = FeatureExtractionService.extract_native_similarity(audio_16k, sr_16k, self.repo)
+        phoneme_errors = errors_data["phoneme_errors"]
         
+        native_sim = FeatureExtractionService.extract_native_similarity(audio_16k, sr_16k, self.repo)
         features = FeatureExtractionService.extract_prosody_and_clarity(audio_22k, sr_22k, alignment_data["words"])
 
+        # Execute new services
+        vowel_data = VowelAnalysisService.extract_vowels(temp_path, alignment_data["phonemes"])
+        articulation_data = ArticulationAnalysisService.analyze(audio_22k, sr_22k)
+        accent_data = AccentAnalysisService.analyze(features, pitch_stats, alignment_data["phonemes"])
+        intonation_data = IntonationAnalysisService.analyze(pitch_stats)
+        phoneme_det_data = PhonemeDetectionService.analyze(phoneme_errors)
+        
         yield await send_progress("Calculating Advanced Metrics...", 80)
         
         scores = ScoringService.calculate_scores(
@@ -67,11 +82,21 @@ class BIPAEvaluator:
         
         yield await send_progress("Generating Explainable Feedback...", 90)
         
+        # Combine traditional recommendations and new holistic feedback
         recommendations = RecommendationService.generate(
             scores=scores, 
             features=features, 
             errors=errors, 
             target_text=target_text
+        )
+        
+        holistic_feedback = FeedbackService.generate(
+            pronunciation=errors_data,
+            vowel=vowel_data,
+            articulation=articulation_data,
+            accent=accent_data,
+            intonation=intonation_data,
+            phoneme_det=phoneme_det_data
         )
 
         yield await send_progress("Finalizing JSON Payload...", 95)
@@ -91,7 +116,12 @@ class BIPAEvaluator:
                 "female": round(native_sim.get("female_score", 0) * 100, 1)
             },
             "voice_profile": native_sim["reference_gender"],
-            "pronunciation": alignment_data,  # Contains 'words', 'phonemes' which handles Word Alignment
+            "pronunciation": {
+                **alignment_data,
+                "pronunciation_score": errors_data.get("pronunciation_score", 0),
+                "word_score": errors_data.get("word_score", 0),
+                "phoneme_score": errors_data.get("phoneme_score", 0)
+            },
             "pitch": {
                 "mean": pitch_stats["mean"],
                 "range": pitch_stats["range"],
@@ -110,8 +140,13 @@ class BIPAEvaluator:
                 "formants": {"F1": 0, "F2": 0, "F3": 0},
                 "vowels": [{"vowel": p["vowel"], "accuracy": 100} for p in formant_data["vowelSpace"]]
             },
+            "articulation": articulation_data,
+            "accent": accent_data,
+            "intonation": intonation_data,
+            "phoneme_detection": phoneme_det_data,
+            "vowel_analysis": vowel_data,
             "errors": errors,
-            "recommendation": recommendations,
+            "recommendation": recommendations + holistic_feedback,
             "analysisMetadata": scores["analysisMetadata"]
         }
         
@@ -127,7 +162,9 @@ class BIPAEvaluator:
         }
         
         score_result_mock = {
-            "overall": scores["overallScore"]
+            "overall": scores["overallScore"],
+            "male": {"dtw": scores.get("dtw_score", 0.0) if native_sim["reference_gender"] == "Male" else 0.0},
+            "female": {"dtw": scores.get("dtw_score", 0.0) if native_sim["reference_gender"] == "Female" else 0.0}
         }
         
         emb_scores_mock = {
@@ -151,4 +188,7 @@ class BIPAEvaluator:
         if phoneme_errors:
             self.repo.save_phoneme_stats(user_id, analysis.id, phoneme_errors)
         
-        yield json.dumps({"status": "complete", "result": to_python(result)}) + "\n"
+        # Validate schema via Pydantic
+        analysis_resp = AnalysisResponse(**result)
+        
+        yield json.dumps({"status": "complete", "result": analysis_resp.model_dump()}) + "\n"

@@ -1,0 +1,947 @@
+{
+  "id": "dac789c9-4735-4f9b-8aed-9cff0b08bd81",
+  "overall_score": 53.27,
+  "dimensions": {
+    "intonation": 24.51,
+    "pronunciation": 58.27,
+    "fluency": 80.0,
+    "clarity": 46.83,
+    "accent": 92.58
+  },
+  "similarity": {
+    "male": 0.940577269003069,
+    "female": 0.9431212325900346
+  },
+  "voice_profile": "Female",
+  "pronunciation": {
+    "transcription": "Kamu mau ke mana?",
+    "words": [
+      {
+        "word": "tes",
+        "start": 0.0,
+        "end": 0.16,
+        "duration": 0.16,
+        "confidence": 0.18,
+        "score": 18.0,
+        "status": "error"
+      },
+      {
+        "word": "bercakapan",
+        "start": 0.16,
+        "end": 0.76,
+        "duration": 0.6,
+        "confidence": 0.84,
+        "score": 84.0,
+        "status": "warning"
+      }
+    ],
+    "phonemes": [
+      {
+        "symbol": "t",
+        "start": 0.0,
+        "end": 0.046,
+        "duration": 0.046,
+        "confidence": 0.19,
+        "score": 18.86
+      },
+      {
+        "symbol": "e",
+        "start": 0.046,
+        "end": 0.114,
+        "duration": 0.068,
+        "confidence": 0.23,
+        "score": 23.09
+      },
+      {
+        "symbol": "s",
+        "start": 0.114,
+        "end": 0.16,
+        "duration": 0.046,
+        "confidence": 0.27,
+        "score": 26.91
+      },
+      {
+        "symbol": "b",
+        "start": 0.16,
+        "end": 0.21,
+        "duration": 0.04999999999999999,
+        "confidence": 0.88,
+        "score": 88.4
+      },
+      {
+        "symbol": "e",
+        "start": 0.21,
+        "end": 0.285,
+        "duration": 0.07499999999999998,
+        "confidence": 0.81,
+        "score": 81.2
+      },
+      {
+        "symbol": "r",
+        "start": 0.285,
+        "end": 0.335,
+        "duration": 0.050000000000000044,
+        "confidence": 0.86,
+        "score": 85.56
+      },
+      {
+        "symbol": "c",
+        "start": 0.335,
+        "end": 0.385,
+        "duration": 0.04999999999999999,
+        "confidence": 0.89,
+        "score": 89.29
+      },
+      {
+        "symbol": "a",
+        "start": 0.385,
+        "end": 0.46,
+        "duration": 0.07500000000000001,
+        "confidence": 0.93,
+        "score": 92.81
+      },
+      {
+        "symbol": "k",
+        "start": 0.46,
+        "end": 0.51,
+        "duration": 0.04999999999999999,
+        "confidence": 0.76,
+        "score": 75.57
+      },
+      {
+        "symbol": "a",
+        "start": 0.51,
+        "end": 0.585,
+        "duration": 0.07499999999999996,
+        "confidence": 0.84,
+        "score": 84.23
+      },
+      {
+        "symbol": "p",
+        "start": 0.585,
+        "end": 0.635,
+        "duration": 0.050000000000000044,
+        "confidence": 0.78,
+        "score": 77.97
+      },
+      {
+        "symbol": "a",
+        "start": 0.635,
+        "end": 0.71,
+        "duration": 0.07499999999999996,
+        "confidence": 0.84,
+        "score": 83.66
+      },
+      {
+        "symbol": "n",
+        "start": 0.71,
+        "end": 0.76,
+        "duration": 0.050000000000000044,
+        "confidence": 0.79,
+        "score": 78.86
+      }
+    ],
+    "pronunciation_score": 58.27,
+    "word_score": 46.83,
+    "phoneme_score": 69.72,
+    "errors": [
+      {
+        "word": "tes",
+        "expected": "tes",
+        "detected": "tes",
+        "score": 33.49,
+        "status": "error",
+        "reason": "Kata ini diucapkan terlalu pelan atau artikulasinya lemah.",
+        "phoneme_errors": [
+          {
+            "word_ref": "tes",
+            "phoneme": "t",
+            "expected": "t",
+            "detected": "t",
+            "start_time": 0.0,
+            "end_time": 0.046,
+            "confidence": 0.19,
+            "pronunciation_score": 18.86,
+            "error_type": "substitution",
+            "feedback": "Bunyi /t/ terdengar seperti bunyi lain yang kurang tepat."
+          },
+          {
+            "word_ref": "tes",
+            "phoneme": "e",
+            "expected": "e",
+            "detected": "e",
+            "start_time": 0.046,
+            "end_time": 0.114,
+            "confidence": 0.23,
+            "pronunciation_score": 23.09,
+            "error_type": "substitution",
+            "feedback": "Bunyi /e/ terdengar seperti bunyi lain yang kurang tepat."
+          },
+          {
+            "word_ref": "tes",
+            "phoneme": "s",
+            "expected": "s",
+            "detected": "s",
+            "start_time": 0.114,
+            "end_time": 0.16,
+            "confidence": 0.27,
+            "pronunciation_score": 26.91,
+            "error_type": "substitution",
+            "feedback": "Bunyi /s/ terdengar seperti bunyi lain yang kurang tepat."
+          }
+        ]
+      },
+      {
+        "word": "bercakapan",
+        "expected": "bercakapan",
+        "detected": "bercakapan",
+        "score": 60.16,
+        "status": "warning",
+        "reason": "Kata ini diucapkan terlalu pelan atau artikulasinya lemah.",
+        "phoneme_errors": [
+          {
+            "word_ref": "bercakapan",
+            "phoneme": "k",
+            "expected": "k",
+            "detected": "k",
+            "start_time": 0.46,
+            "end_time": 0.51,
+            "confidence": 0.76,
+            "pronunciation_score": 75.57,
+            "error_type": "weak articulation",
+            "feedback": "Konsonan /k/ kurang diartikulasikan dengan tegas."
+          },
+          {
+            "word_ref": "bercakapan",
+            "phoneme": "p",
+            "expected": "p",
+            "detected": "p",
+            "start_time": 0.585,
+            "end_time": 0.635,
+            "confidence": 0.78,
+            "pronunciation_score": 77.97,
+            "error_type": "weak articulation",
+            "feedback": "Konsonan /p/ kurang diartikulasikan dengan tegas."
+          },
+          {
+            "word_ref": "bercakapan",
+            "phoneme": "n",
+            "expected": "n",
+            "detected": "n",
+            "start_time": 0.71,
+            "end_time": 0.76,
+            "confidence": 0.79,
+            "pronunciation_score": 78.86,
+            "error_type": "weak articulation",
+            "feedback": "Konsonan /n/ kurang diartikulasikan dengan tegas."
+          }
+        ]
+      }
+    ]
+  },
+  "pitch": {
+    "mean": 328.72,
+    "range": 256.84,
+    "contour": [
+      314.93,
+      317.83,
+      320.73,
+      321.13,
+      325.9,
+      331.23,
+      334.44,
+      335.78,
+      335.81,
+      339.97,
+      344.98,
+      412.04,
+      418.55,
+      418.55,
+      418.55,
+      375.71,
+      373.41,
+      364.98,
+      366.07,
+      373.41,
+      373.41,
+      368.3,
+      368.3,
+      368.3,
+      351.32,
+      345.86,
+      345.86,
+      345.86,
+      345.72,
+      345.72,
+      344.78,
+      344.55,
+      343.3,
+      343.3,
+      343.3,
+      356.19,
+      356.19,
+      356.19,
+      352.9,
+      337.21,
+      331.05,
+      324.31,
+      317.49,
+      306.78,
+      298.78,
+      287.6,
+      268.21,
+      261.39,
+      227.82,
+      216.15,
+      202.97,
+      188.48,
+      177.6,
+      161.7
+    ]
+  },
+  "energy": {
+    "mean": 0.11536585365853658,
+    "contour": [
+      0.015,
+      0.058,
+      0.109,
+      0.151,
+      0.165,
+      0.156,
+      0.126,
+      0.071,
+      0.021,
+      0.011,
+      0.016,
+      0.091,
+      0.101,
+      0.115,
+      0.115,
+      0.071,
+      0.06,
+      0.058,
+      0.104,
+      0.122,
+      0.121,
+      0.108,
+      0.069,
+      0.157,
+      0.234,
+      0.262,
+      0.262,
+      0.21,
+      0.119,
+      0.132,
+      0.188,
+      0.233,
+      0.249,
+      0.219,
+      0.174,
+      0.109,
+      0.065,
+      0.035,
+      0.027,
+      0.016,
+      0.005
+    ]
+  },
+  "pause": {
+    "ratio": 0.2,
+    "timeline": [
+      {
+        "start": 0.0,
+        "end": 0.0,
+        "duration": 0.0
+      },
+      {
+        "start": 0.159,
+        "end": 0.227,
+        "duration": 0.068
+      },
+      {
+        "start": 0.816,
+        "end": 0.906,
+        "duration": 0.091
+      }
+    ]
+  },
+  "phonetics": {
+    "vowel_space": [
+      {
+        "vowel": "e",
+        "f1": 1498.51,
+        "f2": 2621.08,
+        "distance_male": 1314.03,
+        "distance_female": 1048.86,
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "e",
+        "f1": 1111.04,
+        "f2": 2442.42,
+        "distance_male": 894.31,
+        "distance_female": 627.42,
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "a",
+        "f1": 1551.53,
+        "f2": 2539.5,
+        "distance_male": 1587.25,
+        "distance_female": 1338.13,
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "a",
+        "f1": 1021.85,
+        "f2": 1832.92,
+        "distance_male": 710.05,
+        "distance_female": 465.78,
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "a",
+        "f1": 449.48,
+        "f2": 1177.75,
+        "distance_male": 251.5,
+        "distance_female": 458.05,
+        "accuracy": 37.12
+      }
+    ],
+    "formants": {
+      "F1": 0.0,
+      "F2": 0.0,
+      "F3": 0.0
+    },
+    "vowels": [
+      {
+        "vowel": "e",
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "e",
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "a",
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "a",
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "a",
+        "accuracy": 37.12
+      }
+    ]
+  },
+  "articulation": {
+    "zcr": 0.1706,
+    "spectral_centroid": 2735.9,
+    "spectral_bandwidth": 2187.78,
+    "spectral_contrast": 21.38,
+    "speech_clarity": 97.4000015258789
+  },
+  "accent": {
+    "speaking_rate_wpm": 129.2,
+    "rhythm_variance": 78.0,
+    "stress_density": 0.0,
+    "pitch_variance": 3226.76,
+    "pause_ratio": 0.2,
+    "accent_classification": "Neutral"
+  },
+  "intonation": {
+    "sentence_ending": "falling",
+    "pattern": "expressive",
+    "pitch_variance": 3226.76,
+    "similarity_score": 24.51,
+    "user_contour": [
+      314.93,
+      317.83,
+      320.73,
+      321.13,
+      325.9,
+      331.23,
+      334.44,
+      335.78,
+      335.81,
+      339.97,
+      344.98,
+      412.04,
+      418.55,
+      418.55,
+      418.55,
+      375.71,
+      373.41,
+      364.98,
+      366.07,
+      373.41,
+      373.41,
+      368.3,
+      368.3,
+      368.3,
+      351.32,
+      345.86,
+      345.86,
+      345.86,
+      345.72,
+      345.72,
+      344.78,
+      344.55,
+      343.3,
+      343.3,
+      343.3,
+      356.19,
+      356.19,
+      356.19,
+      352.9,
+      337.21,
+      331.05,
+      324.31,
+      317.49,
+      306.78,
+      298.78,
+      287.6,
+      268.21,
+      261.39,
+      227.82,
+      216.15,
+      202.97,
+      188.48,
+      177.6,
+      161.7
+    ],
+    "male_contour": [
+      127.31,
+      105.21188679245287,
+      159.20603773584904,
+      128.73698113207547,
+      163.43509433962262,
+      125.82018867924523,
+      149.95283018867923,
+      103.4618867924528,
+      109.04603773584905,
+      115.29433962264149,
+      130.5796226415094,
+      135.16924528301882,
+      114.55660377358494,
+      96.30528301886794,
+      99.213962264151,
+      150.7609433962264,
+      118.92905660377366,
+      166.56943396226407,
+      114.2400000000001,
+      149.0126415094342,
+      111.44226415094342,
+      102.33867924528288,
+      131.52433962264072,
+      192.8415094339624,
+      454.3430188679237,
+      172.07000000000056,
+      163.1241509433962,
+      158.95320754716982,
+      167.6624528301888,
+      182.00490566037763,
+      128.88169811320753,
+      101.4696226415095,
+      160.6896226415093,
+      232.3245283018856,
+      210.82867924528352,
+      169.2600000000006,
+      167.27132075471687,
+      146.53999999999928,
+      113.32226415094456,
+      121.77433962264142,
+      138.28037735849014,
+      152.51018867924626,
+      151.8526415094342,
+      261.9469811320777,
+      158.50320754716876,
+      167.8503773584903,
+      158.96471698113254,
+      107.45641509434031,
+      148.47113207547136,
+      153.524716981132,
+      133.30245283018894,
+      243.59245283018777,
+      143.28566037735848,
+      113.87
+    ],
+    "female_contour": [
+      261.6,
+      250.30018867924528,
+      294.56999999999994,
+      285.79792452830185,
+      328.9996226415094,
+      315.95924528301896,
+      290.4043396226415,
+      241.03584905660364,
+      311.09,
+      244.14943396226408,
+      221.15566037735857,
+      241.1054716981131,
+      243.46528301886792,
+      323.6115094339623,
+      514.8469811320763,
+      304.7615094339626,
+      258.9915094339622,
+      270.3392452830192,
+      175.57905660377367,
+      169.70660377358496,
+      168.2550943396226,
+      159.29113207547164,
+      132.26886792452706,
+      238.48698113207558,
+      207.07169811320753,
+      209.36226415094356,
+      195.41264150943394,
+      202.37150943396225,
+      177.8252830188679,
+      211.3392452830189,
+      103.9749056603767,
+      169.0098113207547,
+      214.04396226415085,
+      211.13452830188658,
+      214.28018867924533,
+      208.27716981132036,
+      275.64150943396174,
+      256.52339622641495,
+      233.03622641509477,
+      218.99339622641492,
+      245.30811320754748,
+      153.74490566037815,
+      244.59603773584905,
+      225.66452830188598,
+      285.5101886792463,
+      216.95358490566048,
+      191.46377358490588,
+      290.3862264150952,
+      218.0809433962267,
+      234.84207547169788,
+      373.3305660377366,
+      307.9649056603774,
+      306.4803773584907,
+      301.19
+    ],
+    "male_similarity": 0.0,
+    "female_similarity": 24.51,
+    "preferred_reference": "Female"
+  },
+  "phoneme_detection": {
+    "critical_phonemes_accuracy": 69.72,
+    "details": [
+      {
+        "word_ref": "tes",
+        "phoneme": "t",
+        "expected": "t",
+        "detected": "t",
+        "start_time": 0.0,
+        "end_time": 0.046,
+        "confidence": 0.19,
+        "pronunciation_score": 18.86,
+        "error_type": "substitution",
+        "feedback": "Bunyi /t/ terdengar seperti bunyi lain yang kurang tepat."
+      },
+      {
+        "word_ref": "tes",
+        "phoneme": "e",
+        "expected": "e",
+        "detected": "e",
+        "start_time": 0.046,
+        "end_time": 0.114,
+        "confidence": 0.23,
+        "pronunciation_score": 23.09,
+        "error_type": "substitution",
+        "feedback": "Bunyi /e/ terdengar seperti bunyi lain yang kurang tepat."
+      },
+      {
+        "word_ref": "tes",
+        "phoneme": "s",
+        "expected": "s",
+        "detected": "s",
+        "start_time": 0.114,
+        "end_time": 0.16,
+        "confidence": 0.27,
+        "pronunciation_score": 26.91,
+        "error_type": "substitution",
+        "feedback": "Bunyi /s/ terdengar seperti bunyi lain yang kurang tepat."
+      },
+      {
+        "word_ref": "bercakapan",
+        "phoneme": "b",
+        "expected": "b",
+        "detected": "b",
+        "start_time": 0.16,
+        "end_time": 0.21,
+        "confidence": 0.88,
+        "pronunciation_score": 88.4,
+        "error_type": null,
+        "feedback": null
+      },
+      {
+        "word_ref": "bercakapan",
+        "phoneme": "e",
+        "expected": "e",
+        "detected": "e",
+        "start_time": 0.21,
+        "end_time": 0.285,
+        "confidence": 0.81,
+        "pronunciation_score": 81.2,
+        "error_type": null,
+        "feedback": null
+      },
+      {
+        "word_ref": "bercakapan",
+        "phoneme": "r",
+        "expected": "r",
+        "detected": "r",
+        "start_time": 0.285,
+        "end_time": 0.335,
+        "confidence": 0.86,
+        "pronunciation_score": 85.56,
+        "error_type": null,
+        "feedback": null
+      },
+      {
+        "word_ref": "bercakapan",
+        "phoneme": "c",
+        "expected": "c",
+        "detected": "c",
+        "start_time": 0.335,
+        "end_time": 0.385,
+        "confidence": 0.89,
+        "pronunciation_score": 89.29,
+        "error_type": null,
+        "feedback": null
+      },
+      {
+        "word_ref": "bercakapan",
+        "phoneme": "a",
+        "expected": "a",
+        "detected": "a",
+        "start_time": 0.385,
+        "end_time": 0.46,
+        "confidence": 0.93,
+        "pronunciation_score": 92.81,
+        "error_type": null,
+        "feedback": null
+      },
+      {
+        "word_ref": "bercakapan",
+        "phoneme": "k",
+        "expected": "k",
+        "detected": "k",
+        "start_time": 0.46,
+        "end_time": 0.51,
+        "confidence": 0.76,
+        "pronunciation_score": 75.57,
+        "error_type": "weak articulation",
+        "feedback": "Konsonan /k/ kurang diartikulasikan dengan tegas."
+      },
+      {
+        "word_ref": "bercakapan",
+        "phoneme": "a",
+        "expected": "a",
+        "detected": "a",
+        "start_time": 0.51,
+        "end_time": 0.585,
+        "confidence": 0.84,
+        "pronunciation_score": 84.23,
+        "error_type": null,
+        "feedback": null
+      },
+      {
+        "word_ref": "bercakapan",
+        "phoneme": "p",
+        "expected": "p",
+        "detected": "p",
+        "start_time": 0.585,
+        "end_time": 0.635,
+        "confidence": 0.78,
+        "pronunciation_score": 77.97,
+        "error_type": "weak articulation",
+        "feedback": "Konsonan /p/ kurang diartikulasikan dengan tegas."
+      },
+      {
+        "word_ref": "bercakapan",
+        "phoneme": "a",
+        "expected": "a",
+        "detected": "a",
+        "start_time": 0.635,
+        "end_time": 0.71,
+        "confidence": 0.84,
+        "pronunciation_score": 83.66,
+        "error_type": null,
+        "feedback": null
+      },
+      {
+        "word_ref": "bercakapan",
+        "phoneme": "n",
+        "expected": "n",
+        "detected": "n",
+        "start_time": 0.71,
+        "end_time": 0.76,
+        "confidence": 0.79,
+        "pronunciation_score": 78.86,
+        "error_type": "weak articulation",
+        "feedback": "Konsonan /n/ kurang diartikulasikan dengan tegas."
+      }
+    ]
+  },
+  "vowel_analysis": {
+    "vowels": [
+      {
+        "vowel": "e",
+        "f1": 1498.51,
+        "f2": 2621.08,
+        "distance_male": 1314.03,
+        "distance_female": 1048.86,
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "e",
+        "f1": 1111.04,
+        "f2": 2442.42,
+        "distance_male": 894.31,
+        "distance_female": 627.42,
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "a",
+        "f1": 1551.53,
+        "f2": 2539.5,
+        "distance_male": 1587.25,
+        "distance_female": 1338.13,
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "a",
+        "f1": 1021.85,
+        "f2": 1832.92,
+        "distance_male": 710.05,
+        "distance_female": 465.78,
+        "accuracy": 0.0
+      },
+      {
+        "vowel": "a",
+        "f1": 449.48,
+        "f2": 1177.75,
+        "distance_male": 251.5,
+        "distance_female": 458.05,
+        "accuracy": 37.12
+      }
+    ],
+    "f1_mean": 0.0,
+    "f2_mean": 0.0,
+    "f3_mean": 0.0,
+    "vsa": 0.0
+  },
+  "errors": [
+    {
+      "word": "tes",
+      "expected": "tes",
+      "detected": "tes",
+      "score": 33.49,
+      "status": "error",
+      "reason": "Kata ini diucapkan terlalu pelan atau artikulasinya lemah.",
+      "phoneme_errors": [
+        {
+          "word_ref": "tes",
+          "phoneme": "t",
+          "expected": "t",
+          "detected": "t",
+          "start_time": 0.0,
+          "end_time": 0.046,
+          "confidence": 0.19,
+          "pronunciation_score": 18.86,
+          "error_type": "substitution",
+          "feedback": "Bunyi /t/ terdengar seperti bunyi lain yang kurang tepat."
+        },
+        {
+          "word_ref": "tes",
+          "phoneme": "e",
+          "expected": "e",
+          "detected": "e",
+          "start_time": 0.046,
+          "end_time": 0.114,
+          "confidence": 0.23,
+          "pronunciation_score": 23.09,
+          "error_type": "substitution",
+          "feedback": "Bunyi /e/ terdengar seperti bunyi lain yang kurang tepat."
+        },
+        {
+          "word_ref": "tes",
+          "phoneme": "s",
+          "expected": "s",
+          "detected": "s",
+          "start_time": 0.114,
+          "end_time": 0.16,
+          "confidence": 0.27,
+          "pronunciation_score": 26.91,
+          "error_type": "substitution",
+          "feedback": "Bunyi /s/ terdengar seperti bunyi lain yang kurang tepat."
+        }
+      ]
+    },
+    {
+      "word": "bercakapan",
+      "expected": "bercakapan",
+      "detected": "bercakapan",
+      "score": 60.16,
+      "status": "warning",
+      "reason": "Kata ini diucapkan terlalu pelan atau artikulasinya lemah.",
+      "phoneme_errors": [
+        {
+          "word_ref": "bercakapan",
+          "phoneme": "k",
+          "expected": "k",
+          "detected": "k",
+          "start_time": 0.46,
+          "end_time": 0.51,
+          "confidence": 0.76,
+          "pronunciation_score": 75.57,
+          "error_type": "weak articulation",
+          "feedback": "Konsonan /k/ kurang diartikulasikan dengan tegas."
+        },
+        {
+          "word_ref": "bercakapan",
+          "phoneme": "p",
+          "expected": "p",
+          "detected": "p",
+          "start_time": 0.585,
+          "end_time": 0.635,
+          "confidence": 0.78,
+          "pronunciation_score": 77.97,
+          "error_type": "weak articulation",
+          "feedback": "Konsonan /p/ kurang diartikulasikan dengan tegas."
+        },
+        {
+          "word_ref": "bercakapan",
+          "phoneme": "n",
+          "expected": "n",
+          "detected": "n",
+          "start_time": 0.71,
+          "end_time": 0.76,
+          "confidence": 0.79,
+          "pronunciation_score": 78.86,
+          "error_type": "weak articulation",
+          "feedback": "Konsonan /n/ kurang diartikulasikan dengan tegas."
+        }
+      ]
+    }
+  ],
+  "recommendation": [
+    {
+      "type": "Strength",
+      "message": "Your overall attempt was recorded successfully."
+    },
+    {
+      "type": "Feedback",
+      "message": "Secara keseluruhan, pelafalan bahasa Indonesia Anda mencapai skor 53.27, yang menunjukkan pemahaman dasar yang baik. Namun, intonasi dan nada bicara Anda masih terasa kurang natural dibandingkan penutur asli. Cobalah untuk berbicara dengan ritme yang lebih mengalir tanpa memberikan penekanan berlebih. \n\nPerhatian khusus: Saat mengucapkan kata 'tes', terdengar kurang tepat. Kata ini diucapkan terlalu pelan atau artikulasinya lemah. Cobalah berlatih mengulang kata ini secara perlahan, perhatikan panjang pendek vokal dan ketegasan konsonannya agar lebih mudah dipahami."
+    }
+  ],
+  "analysisMetadata": {
+    "processed": true
+  }
+}

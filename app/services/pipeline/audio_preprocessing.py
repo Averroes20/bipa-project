@@ -58,7 +58,8 @@ class AudioPreprocessingService:
                 "sr_22k": 22050,
                 "audio_16k": y_16k_norm,
                 "sr_16k": 16000,
-                "temp_path": tmp_path
+                "temp_path": tmp_path,
+                "duration": float(len(y_22k_norm) / 22050)
             }
         except Exception as e:
             if isinstance(e, HTTPException):

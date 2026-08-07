@@ -1,22 +1,31 @@
 import numpy as np
-import librosa
+import parselmouth
+from parselmouth.praat import call
 from scipy.signal import medfilt
 from typing import Dict, Any
+from app.core.logger import logger
 
 class PitchAnalysisService:
     @staticmethod
     def analyze(audio: np.ndarray, sr: int = 22050) -> Dict[str, Any]:
         """
-        Extracts Fundamental Frequency (F0) using probabilistic YIN (pyin).
+        Extracts Fundamental Frequency (F0) using Parselmouth (Boersma's method) for extreme speed.
         Smooths contour, removes outliers, and calculates statistics.
         """
-        # Define expected human pitch range (65Hz - 1046Hz, ~C2 to C6)
-        f0, voiced_flag, voiced_probs = librosa.pyin(
-            audio, 
-            sr=sr, 
-            fmin=librosa.note_to_hz('C2'), 
-            fmax=librosa.note_to_hz('C6')
-        )
+        try:
+            # Convert numpy array to Parselmouth Sound object
+            snd = parselmouth.Sound(audio, sampling_frequency=sr)
+            
+            # Extract pitch (time_step=0.01, pitch_floor=75, pitch_ceiling=600)
+            pitch = snd.to_pitch(time_step=0.01, pitch_floor=75, pitch_ceiling=600)
+            pitch_values = pitch.selected_array['frequency']
+            
+            f0 = np.array(pitch_values)
+            # 0 values in Parselmouth indicate unvoiced
+            f0[f0 == 0] = np.nan
+        except Exception as e:
+            logger.error(f"Parselmouth pitch extraction failed: {e}")
+            f0 = np.array([])
         
         # Filter out unvoiced frames (NaNs)
         if f0 is None or len(f0) == 0:
