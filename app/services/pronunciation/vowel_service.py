@@ -1,13 +1,12 @@
 import parselmouth
 from parselmouth.praat import call
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 import numpy as np
 from app.core.logger import logger
 
 class VowelService:
     VOWELS = ['a', 'i', 'u', 'e', 'o']
     
-    # Static baseline formants for Indonesian vowels (Rough approximations for Male/Female)
     NATIVE_BASELINES = {
         "Male": {
             "a": {"f1": 700, "f2": 1200},
@@ -26,10 +25,25 @@ class VowelService:
     }
 
     @staticmethod
-    def extract_and_compare(audio_path: str, phonemes_data: List[Dict]) -> Dict[str, Any]:
+    def extract_and_compare(audio_path: str, phonemes_data: List[Dict], male_cand: Optional[Dict] = None, female_cand: Optional[Dict] = None) -> Dict[str, Any]:
         """
-        Extracts F1, F2, F3 for each vowel and compares to native baselines using Euclidean distance.
+        Extracts F1, F2, F3 for each vowel and compares to native baselines.
+        Uses male_cand and female_cand actual corpus formants if available.
         """
+        male_space = VowelService.NATIVE_BASELINES["Male"]
+        female_space = VowelService.NATIVE_BASELINES["Female"]
+        
+        if male_cand and isinstance(male_cand.get("vowel_profile"), dict) and male_cand["vowel_profile"]:
+            # Basic validation
+            vp = male_cand["vowel_profile"]
+            if "a" in vp and "f1" in vp["a"]:
+                male_space = vp
+                
+        if female_cand and isinstance(female_cand.get("vowel_profile"), dict) and female_cand["vowel_profile"]:
+            vp = female_cand["vowel_profile"]
+            if "a" in vp and "f1" in vp["a"]:
+                female_space = vp
+        
         try:
             snd = parselmouth.Sound(audio_path)
             formants = snd.to_formant_burg(time_step=0.01, max_number_of_formants=5, maximum_formant=5500.0)
@@ -37,7 +51,7 @@ class VowelService:
             user_vowels = []
             
             for ph in phonemes_data:
-                symbol = ph["phoneme"].lower()
+                symbol = ph.get("phoneme", "").lower()
                 if symbol in VowelService.VOWELS:
                     midpoint = ph["start_time"] + ((ph["end_time"] - ph["start_time"]) / 2.0)
                     
@@ -45,9 +59,8 @@ class VowelService:
                     f2 = call(formants, "Get value at time", 2, midpoint, 'Hertz', 'Linear')
                     
                     if not np.isnan(f1) and not np.isnan(f2):
-                        # Compare distance to male and female baseline
-                        b_m = VowelService.NATIVE_BASELINES["Male"][symbol]
-                        b_f = VowelService.NATIVE_BASELINES["Female"][symbol]
+                        b_m = male_space.get(symbol, VowelService.NATIVE_BASELINES["Male"][symbol])
+                        b_f = female_space.get(symbol, VowelService.NATIVE_BASELINES["Female"][symbol])
                         
                         dist_m = np.sqrt((f1 - b_m["f1"])**2 + (f2 - b_m["f2"])**2)
                         dist_f = np.sqrt((f1 - b_f["f1"])**2 + (f2 - b_f["f2"])**2)
@@ -66,14 +79,14 @@ class VowelService:
             
             return {
                 "user_space": user_vowels,
-                "native_male_space": VowelService.NATIVE_BASELINES["Male"],
-                "native_female_space": VowelService.NATIVE_BASELINES["Female"]
+                "native_male_space": male_space,
+                "native_female_space": female_space
             }
             
         except Exception as e:
             logger.error(f"Formant extraction error: {e}")
             return {
                 "user_space": [],
-                "native_male_space": VowelService.NATIVE_BASELINES["Male"],
-                "native_female_space": VowelService.NATIVE_BASELINES["Female"]
+                "native_male_space": male_space,
+                "native_female_space": female_space
             }

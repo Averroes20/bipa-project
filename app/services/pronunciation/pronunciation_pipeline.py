@@ -49,7 +49,8 @@ class PronunciationPipeline:
             
             align_data, pitch_stats = await asyncio.gather(align_task, pitch_task)
             
-        words_boundary = align_data["words"]
+        words_boundary = align_data.get("words", [])
+        final_target_text = align_data.get("target_text", target_text)
         duration_total = float(len(audio_22k) / sr_22k)
         
         yield await send_progress("Extracting Acoustic Features...", 40)
@@ -61,12 +62,13 @@ class PronunciationPipeline:
         evaluated_words = WordService.evaluate_words(words_boundary, pitch_contour, energy_contour, duration_total)
         phonemes_data, mispronounced = PhonemeService.evaluate_phonemes(evaluated_words)
         
-        yield await send_progress("Comparing Vowel Space & Intonation...", 70)
-        vowel_data = VowelService.extract_and_compare(temp_path, phonemes_data)
         native_sim = FeatureExtractionService.extract_native_similarity(audio_16k, sr_16k, self.repo)
-        
         male_cand = native_sim.get("best_male_candidate") or {}
         female_cand = native_sim.get("best_female_candidate") or {}
+        
+        yield await send_progress("Comparing Vowel Space & Intonation...", 70)
+        vowel_data = VowelService.extract_and_compare(temp_path, phonemes_data, male_cand, female_cand)
+        
         m_pitch = male_cand.get("pitch_contour", [])
         f_pitch = female_cand.get("pitch_contour", [])
         
@@ -198,7 +200,7 @@ class PronunciationPipeline:
             },
             "voice_profile": native_sim.get("reference_gender", "Unknown"),
             "pronunciation": {
-                "transcription": target_text,
+                "transcription": final_target_text,
                 "words": [{"word": w["word"], "start": float(w["start_time"]), "end": float(w["end_time"]), "duration": float(w["end_time"]) - float(w["start_time"]), "confidence": float(w["confidence"]), "score": float(w["pronunciation_score"]), "status": next((m["status"] for m in mispronounced if m["word"] == w["word"]), "correct")} for w in evaluated_words],
                 "phonemes": [{"symbol": p["phoneme"], "start": float(p["start_time"]), "end": float(p["end_time"]), "duration": float(p["end_time"]) - float(p["start_time"]), "confidence": float(p["confidence"]), "score": float(p["pronunciation_score"])} for p in phonemes_data],
                 "pronunciation_score": scoring.get("pronunciation_score", 0.0),
@@ -221,6 +223,8 @@ class PronunciationPipeline:
             },
             "phonetics": {
                 "vowel_space": vowel_data.get("user_space", []),
+                "native_male_space": vowel_data.get("native_male_space", {}),
+                "native_female_space": vowel_data.get("native_female_space", {}),
                 "vowels": [{"vowel": v["vowel"], "accuracy": float(v.get("accuracy", 0.0))} for v in vowel_data.get("user_space", [])]
             },
             "articulation": {

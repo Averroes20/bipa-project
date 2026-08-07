@@ -35,12 +35,12 @@ class PronunciationSchema(BaseModel):
     phoneme_score: float
 
 class PitchSchema(BaseModel):
-    mean: float
-    range: float
+    mean: Optional[float] = None
+    range: Optional[float] = None
     contour: List[float]
 
 class EnergySchema(BaseModel):
-    mean: float
+    mean: Optional[float] = None
     contour: List[float]
 
 class TimelineEvent(BaseModel):
@@ -56,16 +56,16 @@ class PhoneticVowelSchema(BaseModel):
     accuracy: float
 
 class PhoneticsSchema(BaseModel):
-    vowel_space: List[Dict[str, Any]]
-    formants: Dict[str, float]
-    vowels: List[PhoneticVowelSchema]
+    vowel_space: List[Dict[str, Any]] = []
+    formants: Dict[str, Optional[float]] = {}
+    vowels: List[PhoneticVowelSchema] = []
 
 class ArticulationSchema(BaseModel):
-    zcr: float
-    spectral_centroid: float
-    spectral_bandwidth: float
-    spectral_contrast: float
-    speech_clarity: float
+    zcr: Optional[float] = None
+    spectral_centroid: Optional[float] = None
+    spectral_bandwidth: Optional[float] = None
+    spectral_contrast: Optional[float] = None
+    speech_clarity: Optional[float] = None
 
 class AccentSchema(BaseModel):
     speaking_rate_wpm: float
@@ -78,7 +78,7 @@ class AccentSchema(BaseModel):
 class IntonationSchema(BaseModel):
     sentence_ending: str
     pattern: str
-    pitch_variance: float
+    pitch_variance: Optional[float] = None
 
 class PhonemeDetectionDetailSchema(BaseModel):
     accuracy: float
@@ -91,10 +91,10 @@ class PhonemeDetectionSchema(BaseModel):
 
 class VowelDetailSchema(BaseModel):
     vowel: str
-    f1: float
-    f2: float
-    f3: float
-    time: float
+    f1: Optional[float] = None
+    f2: Optional[float] = None
+    f3: Optional[float] = None
+    time: Optional[float] = None
 
 class VowelAnalysisSchema(BaseModel):
     vowels: List[VowelDetailSchema]

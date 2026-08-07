@@ -96,10 +96,11 @@ class AnalysisRepository:
             pg_vector_str = "[" + ",".join(map(str, emb_arr)) + "]"
 
             base_query = """
-                SELECT c.pitch_contour, c.energy_contour, f.embedding_vector 
+                SELECT c.pitch_contour, c.energy_contour, f.embedding_vector, form.vowel_profile
                 FROM dataset_feature f
                 JOIN dataset_audio a ON a.id = f.audio_id
                 LEFT JOIN dataset_contour c ON c.audio_id = a.id
+                LEFT JOIN dataset_formant form ON form.audio_id = a.id
             """
             params: Dict[str, Any] = {"user_emb": pg_vector_str, "k": k}
 
@@ -122,10 +123,14 @@ class AnalysisRepository:
                     if isinstance(energy_contour, str):
                         energy_contour = json.loads(energy_contour)
                     # row[2] is the embedding_vector
+                    vowel_profile = row[3] if len(row) > 3 and row[3] else {}
+                    if isinstance(vowel_profile, str):
+                        vowel_profile = json.loads(vowel_profile)
                     candidates.append({
                         "pitch_contour": pitch_contour,
                         "energy_contour": energy_contour,
-                        "embedding_vector": row[2]
+                        "embedding_vector": row[2],
+                        "vowel_profile": vowel_profile
                     })
                 except Exception:
                     pass
@@ -134,10 +139,11 @@ class AnalysisRepository:
             self.db.rollback()
             # Fallback
             query = text("""
-                SELECT c.pitch_contour, c.energy_contour, f.embedding_vector 
+                SELECT c.pitch_contour, c.energy_contour, f.embedding_vector, form.vowel_profile 
                 FROM dataset_feature f
                 JOIN dataset_audio a ON a.id = f.audio_id
                 LEFT JOIN dataset_contour c ON c.audio_id = a.id
+                LEFT JOIN dataset_formant form ON form.audio_id = a.id
             """ + (" WHERE a.gender = :gender" if gender else "") + " LIMIT :k")
             params = {"k": k}
             if gender:
@@ -153,10 +159,14 @@ class AnalysisRepository:
                     energy_contour = row[1] if row[1] else []
                     if isinstance(energy_contour, str):
                         energy_contour = json.loads(energy_contour)
+                    vowel_profile = row[3] if len(row) > 3 and row[3] else {}
+                    if isinstance(vowel_profile, str):
+                        vowel_profile = json.loads(vowel_profile)
                     candidates.append({
                         "pitch_contour": pitch_contour,
                         "energy_contour": energy_contour,
-                        "embedding_vector": row[2]
+                        "embedding_vector": row[2],
+                        "vowel_profile": vowel_profile
                     })
                 except Exception:
                     pass

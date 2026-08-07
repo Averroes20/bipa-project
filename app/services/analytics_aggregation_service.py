@@ -71,24 +71,18 @@ class AnalyticsAggregationService:
             
             # Aggregate Errors
             for err in detail.get("errors", []):
-                err_type = err.get("type", "")
-                expected = err.get("expected", "")
-                detected = err.get("detected", "")
-                
-                target = expected if expected else detected
-                if not target:
-                    continue
-                    
-                target = str(target).lower()
-                
-                if err_type in ["Substitution", "Deletion", "Insertion", "Mispronunciation"]:
-                    if len(target) > 1:
-                        errors_tally[target] += 1
-                    elif len(target) == 1:
-                        if target in ["a", "i", "u", "e", "o"]:
-                             vowel_errors_tally[target] += 1
-                        else:
-                             phoneme_errors_tally[target] += 1
+                word = str(err.get("word", "")).lower()
+                if word:
+                    errors_tally[word] += 1
+            
+            for ph in detail.get("pronunciation", {}).get("phonemes", []):
+                ph_score = ph.get("score", 100)
+                if ph_score < 75:
+                    symbol = str(ph.get("symbol", "")).lower()
+                    if symbol in ["a", "i", "u", "e", "o"]:
+                        vowel_errors_tally[symbol] += 1
+                    elif symbol:
+                        phoneme_errors_tally[symbol] += 1
         
         # Calculate summary metrics
         avg_score = sum(scores_overall) / len(scores_overall)

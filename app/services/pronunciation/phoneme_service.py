@@ -1,19 +1,10 @@
 import re
 from typing import Dict, Any, List, Tuple
-import numpy as np
 from app.services.pronunciation.alignment_service import indonesian_g2p
 
 class PhonemeService:
     @staticmethod
     def evaluate_phonemes(evaluated_words: List[Dict[str, Any]]) -> Tuple[List[Dict[str, Any]], List[Dict[str, Any]]]:
-        """
-        Splits words into phonemes based on word boundaries and simple proportional segmentation.
-        Detects mispronounced words and generates dynamic reasons based on the acoustic scores.
-        
-        Returns:
-            phonemes: List of phoneme dicts
-            mispronounced: List of mispronounced word dicts with reasons
-        """
         phonemes_data = []
         mispronounced_data = []
         
@@ -21,12 +12,25 @@ class PhonemeService:
             word = w["word"]
             start = w["start_time"]
             end = w["end_time"]
-            word_dur = end - start
             confidence = w["confidence"]
             
-            # G2P
+            # Missing word mapping
+            if start == 0.0 and end == 0.0 and confidence == 0.0:
+                w["pronunciation_score"] = 0.0
+                w["overall_score"] = 0.0
+                mispronounced_data.append({
+                    "word": word,
+                    "status": "error",
+                    "reason": "Kata terlewatkan atau tidak terdeteksi (deletion)."
+                })
+                continue
+                
+            word_dur = end - start
+            
             ph_list = indonesian_g2p(word)
             if not ph_list:
+                w["pronunciation_score"] = 0.0
+                w["overall_score"] = 0.0
                 continue
                 
             vowels = ['a', 'i', 'u', 'e', 'o']
@@ -34,48 +38,60 @@ class PhonemeService:
             total_weight = sum(weights)
             
             curr_time = start
+            word_phoneme_scores = []
+            
             for idx, ph in enumerate(ph_list):
                 ph_dur = (weights[idx] / total_weight) * word_dur
                 
-                # Jitter confidence slightly for realistic variance
-                ph_conf = min(1.0, max(0.0, confidence + np.random.uniform(-0.1, 0.1)))
-                ph_score = ph_conf * 100
+                # Phoneme score based purely on alignment confidence
+                ph_score = min(100.0, max(0.0, confidence * 100))
+                word_phoneme_scores.append(ph_score)
                 
-                # Provide specific phoneme feedback if score is low
                 ph_feedback = None
                 error_type = None
-                if ph_score < 80:
-                    if ph_score < 50:
+                
+                if ph_score < 75:
+                    if ph_score < 40:
+                        error_type = "deletion"
+                        ph_feedback = f"Bunyi /{ph}/ hilang atau sangat tidak jelas."
+                    elif ph_score < 60:
                         error_type = "substitution"
                         ph_feedback = f"Bunyi /{ph}/ terdengar seperti bunyi lain yang kurang tepat."
                     elif ph in vowels:
-                        error_type = "vowel quality deviation"
+                        error_type = "vowel_quality_deviation"
                         ph_feedback = f"Vokal /{ph}/ terdengar kurang jelas atau posisinya bergeser."
                     else:
-                        error_type = "weak articulation"
+                        error_type = "weak_articulation"
                         ph_feedback = f"Konsonan /{ph}/ kurang diartikulasikan dengan tegas."
                 
                 phonemes_data.append({
                     "word_ref": word,
                     "phoneme": ph,
                     "expected": ph,
-                    "detected": ph,
+                    "detected": ph if error_type != "deletion" else None,
                     "start_time": round(curr_time, 3),
                     "end_time": round(curr_time + ph_dur, 3),
-                    "confidence": round(ph_conf, 2),
+                    "confidence": round(confidence, 2),
                     "pronunciation_score": round(ph_score, 2),
                     "error_type": error_type,
                     "feedback": ph_feedback
                 })
                 curr_time += ph_dur
                 
-            # Mispronounced word logic (Sprint D)
-            overall = w["overall_score"]
+            # Hierarchical Scoring Logic
+            pronunciation_score = sum(word_phoneme_scores) / len(word_phoneme_scores) if word_phoneme_scores else 0.0
+            
+            # Overall Word Score = 60% Pronunciation + 40% Acoustic
+            overall = (pronunciation_score * 0.6) + (w["pitch_score"] * 0.15) + (w["energy_score"] * 0.15) + (w["duration_score"] * 0.1)
+            
+            w["pronunciation_score"] = round(pronunciation_score, 2)
+            w["overall_score"] = round(overall, 2)
+            
             status = "correct"
             if overall < 60:
                 status = "error"
             elif overall < 80:
-                status = "warning"
+                status = "needs_improvement"
                 
             if status != "correct":
                 scores = {
@@ -96,17 +112,16 @@ class PhonemeService:
                 elif worst_aspect == "stress":
                     reason = "Penekanan suku kata (stress) tidak ditempatkan pada posisi yang tepat."
                     
-                # Collect any phoneme errors inside this word
                 ph_errors = [p for p in phonemes_data if p["word_ref"] == word and p["error_type"]]
+                if ph_errors:
+                    ph_reason = ", ".join([f"/{p['phoneme']}/ ({p['error_type']})" for p in ph_errors])
+                    reason += f" Kesalahan fonem: {ph_reason}."
                     
                 mispronounced_data.append({
                     "word": word,
-                    "expected": word,
-                    "detected": word,
-                    "score": round(overall, 2),
                     "status": status,
                     "reason": reason,
-                    "phoneme_errors": ph_errors
+                    "score": w.get("overall_score", 0.0)
                 })
                 
         return phonemes_data, mispronounced_data
