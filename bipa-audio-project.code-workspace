@@ -8,6 +8,9 @@
 		},
 		{
 			"path": "../Prompt"
+		},
+		{
+			"path": "../bipa_mobile"
 		}
 	],
 	"settings": {}

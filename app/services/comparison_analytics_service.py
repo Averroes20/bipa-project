@@ -11,148 +11,295 @@ class ComparisonAnalyticsService:
         self.db = db
         self.repo = AnalysisRepository(db)
 
-    def get_comparison_analytics(self, user_id: str) -> Dict[str, Any]:
-        analyses = self.db.query(AudioAnalysis).filter(AudioAnalysis.user_id == user_id).order_by(AudioAnalysis.created_at.asc()).all()
-        
-        # Native baseline defaults (since they are generated randomly or fixed if real dataset not present)
-        # Assuming the new pipeline sets these properly, we'll mock realistic native targets.
-        native_male = {"pronunciation": 95, "fluency": 92, "intonation": 90, "clarity": 94}
-        native_female = {"pronunciation": 96, "fluency": 94, "intonation": 93, "clarity": 96}
-        
-        if not analyses:
-             return self._empty_response(native_male, native_female)
+    def get_comparison_analytics(self, user_id: str, period: str = "all") -> Dict[str, Any]:
+        from sqlalchemy import func, case
+        from app.models.audio_models import AnalysisWord, AnalysisPhoneme
 
         now = datetime.utcnow()
-        seven_days_ago = now - timedelta(days=7)
+        period_days = 0
+        if period == "7d":
+            period_days = 7
+        elif period == "30d":
+            period_days = 30
+        elif period == "3m":
+            period_days = 90
+
+        all_analyses = self.db.query(AudioAnalysis).filter(AudioAnalysis.user_id == user_id).order_by(AudioAnalysis.created_at.asc()).all()
         
-        user_scores = {"pronunciation": [], "fluency": [], "intonation": [], "clarity": [], "similarity": []}
-        recent_fluency = []
-        old_fluency = []
+        current_period_analyses = []
+        previous_period_analyses = []
         
-        errors_tally = defaultdict(int)
-        phoneme_errors_tally = defaultdict(int)
-        vowel_errors_tally = defaultdict(int)
+        if period == "all" or period_days == 0:
+            current_period_analyses = all_analyses
+        else:
+            current_cutoff = now - timedelta(days=period_days)
+            previous_cutoff = now - timedelta(days=period_days * 2)
+            
+            for a in all_analyses:
+                if a.created_at >= current_cutoff:
+                    current_period_analyses.append(a)
+                elif a.created_at >= previous_cutoff:
+                    previous_period_analyses.append(a)
         
-        wpm_total = []
-        pause_duration_total = []
-        
-        for record in analyses:
+        if not current_period_analyses:
+             return self._empty_response()
+
+        # Helper to extract dimensions
+        def extract_dims(record):
             detail = {}
             try:
                 if record.analysis_detail:
                     detail = json.loads(record.analysis_detail)
             except Exception:
-                continue
-                
-            dims = detail.get("dimensions", {})
-            user_scores["pronunciation"].append(dims.get("pronunciation", 0))
-            user_scores["fluency"].append(dims.get("fluency", 0))
-            user_scores["intonation"].append(dims.get("intonation", 0))
-            user_scores["clarity"].append(dims.get("clarity", 0))
-            user_scores["similarity"].append(dims.get("accent", 0))
-            
-            is_recent_week = record.created_at >= seven_days_ago if record.created_at else False
-            is_prev_week = (seven_days_ago > record.created_at >= (seven_days_ago - timedelta(days=7))) if record.created_at else False
-            
-            if is_recent_week:
-                recent_fluency.append(dims.get("fluency", 0))
-            elif is_prev_week:
-                old_fluency.append(dims.get("fluency", 0))
-                
-            # Speaking stats
-            features = detail.get("analysisMetadata", {}).get("fluency_basis", {})
-            wpm_val = str(features.get("Speech Rate", "0")).replace(" WPM", "")
-            try:
-                wpm_total.append(float(wpm_val))
-            except:
                 pass
-                
-            pause_val = str(features.get("Pause Duration Avg", "0")).replace("s", "")
-            try:
-                pause_duration_total.append(float(pause_val))
-            except:
-                pass
-                
-            # Errors for phonemes / words
-            for err in detail.get("errors", []):
-                word = str(err.get("word", "")).lower()
-                if word:
-                    errors_tally[word] += 1
+            return {
+                "pronunciation": detail.get("pronunciation_score", 0) or 0,
+                "fluency": detail.get("fluency_score", 0) or 0,
+                "intonation": detail.get("intonation_score", 0) or 0,
+                "rhythm": detail.get("rhythm_score", 0) or 0,
+                "word_stress": detail.get("accent_score", 0) or 0
+            }
+
+        # Calculate previous averages
+        prev_scores = {"pronunciation": [], "fluency": [], "intonation": [], "rhythm": []}
+        for record in previous_period_analyses:
+            dims = extract_dims(record)
+            prev_scores["pronunciation"].append(dims["pronunciation"])
+            prev_scores["fluency"].append(dims["fluency"])
+            prev_scores["intonation"].append(dims["intonation"])
+            prev_scores["rhythm"].append(dims["rhythm"])
             
-            for ph in detail.get("pronunciation", {}).get("phonemes", []):
-                ph_score = ph.get("score", 100)
-                if ph_score < 75:
-                    symbol = str(ph.get("symbol", "")).lower()
-                    if symbol in ["a", "i", "u", "e", "o"]:
-                        vowel_errors_tally[symbol] += 1
-                    elif symbol:
-                        phoneme_errors_tally[symbol] += 1
-                             
         avg = lambda x: sum(x)/len(x) if x else 0
         
+        prev_avg = {
+            "pronunciation": avg(prev_scores["pronunciation"]),
+            "fluency": avg(prev_scores["fluency"]),
+            "intonation": avg(prev_scores["intonation"]),
+            "rhythm": avg(prev_scores["rhythm"])
+        }
+
+        # Calculate current averages and progress
+        user_scores = {"pronunciation": [], "fluency": [], "intonation": [], "rhythm": [], "word_stress": []}
+        wpm_total = []
+        pause_ratio_total = []
+        progress = []
+        
+        analysis_ids = [record.id for record in current_period_analyses]
+        
+        # Pre-fetch word counts per analysis for WPM calculation
+        word_counts_query = self.db.query(
+            AnalysisWord.analysis_id,
+            func.count(AnalysisWord.id).label("count")
+        ).filter(AnalysisWord.analysis_id.in_(analysis_ids)).group_by(AnalysisWord.analysis_id).all()
+        word_counts = {row.analysis_id: row.count for row in word_counts_query}
+        
+        for record in current_period_analyses:
+            dims = extract_dims(record)
+            
+            user_scores["pronunciation"].append(dims["pronunciation"])
+            user_scores["fluency"].append(dims["fluency"])
+            user_scores["intonation"].append(dims["intonation"])
+            user_scores["rhythm"].append(dims["rhythm"])
+            user_scores["word_stress"].append(dims["word_stress"])
+            
+            progress.append({
+                "date": record.created_at.strftime("%b %d") if record.created_at else "",
+                "pronunciation": round(dims["pronunciation"], 1),
+                "fluency": round(dims["fluency"], 1),
+                "intonation": round(dims["intonation"], 1),
+                "rhythm": round(dims["rhythm"], 1)
+            })
+            
+            # Speaking stats (WPM = words / (duration / 60))
+            duration_val = float(record.duration or 0)
+            word_count = word_counts.get(record.id, 0)
+            
+            if duration_val > 0 and word_count > 0:
+                wpm = word_count / (duration_val / 60)
+                wpm_total.append(wpm)
+                
+            pause_ratio_val = float(record.pause_ratio or 0)
+            pause_ratio_total.append(pause_ratio_val * 100) # Convert to percentage
+                             
         user_avg = {
             "pronunciation": avg(user_scores["pronunciation"]),
             "fluency": avg(user_scores["fluency"]),
             "intonation": avg(user_scores["intonation"]),
-            "clarity": avg(user_scores["clarity"]),
-            "similarity": avg(user_scores["similarity"])
+            "rhythm": avg(user_scores["rhythm"]),
+            "word_stress": avg(user_scores["word_stress"])
         }
         
-        # Radar Data
+        changes = {
+            "pronunciation": None,
+            "fluency": None,
+            "intonation": None,
+            "rhythm": None
+        }
+        
+        if previous_period_analyses:
+             changes = {
+                 "pronunciation": round(user_avg["pronunciation"] - prev_avg["pronunciation"], 1),
+                 "fluency": round(user_avg["fluency"] - prev_avg["fluency"], 1),
+                 "intonation": round(user_avg["intonation"] - prev_avg["intonation"], 1),
+                 "rhythm": round(user_avg["rhythm"] - prev_avg["rhythm"], 1)
+             }
+        
         radar_data = [
-            {"dimension": "Pronunciation", "You": round(user_avg["pronunciation"], 1), "Native Reference": 95},
-            {"dimension": "Fluency", "You": round(user_avg["fluency"], 1), "Native Reference": 93},
-            {"dimension": "Intonation", "You": round(user_avg["intonation"], 1), "Native Reference": 91},
-            {"dimension": "Clarity", "You": round(user_avg["clarity"], 1), "Native Reference": 95},
-            {"dimension": "Similarity", "You": round(user_avg["similarity"], 1), "Native Reference": 100},
+            {"dimension": "Pronunciation", "You": round(user_avg["pronunciation"], 1)},
+            {"dimension": "Fluency", "You": round(user_avg["fluency"], 1)},
+            {"dimension": "Intonation", "You": round(user_avg["intonation"], 1)},
+            {"dimension": "Rhythm", "You": round(user_avg["rhythm"], 1)},
+            {"dimension": "Word Stress", "You": round(user_avg["word_stress"], 1)},
         ]
         
-        # Word / Phoneme lists
-        top_words = [{"word": k, "frequency": v, "accuracy": max(0, 100 - v*5)} for k, v in sorted(errors_tally.items(), key=lambda i: i[1], reverse=True)[:5]]
-        top_diff_phonemes = [{"phoneme": k, "frequency": v, "accuracy": max(0, 100 - v*10)} for k, v in sorted(phoneme_errors_tally.items(), key=lambda i: i[1], reverse=True)[:5]]
+        # Word Analytics aggregation using SQL
+        words_query = self.db.query(
+            func.lower(AnalysisWord.word).label("word"),
+            func.count(AnalysisWord.id).label("attempts"),
+            func.count(func.distinct(AnalysisWord.analysis_id)).label("unique_sessions"),
+            func.avg(AnalysisWord.overall_score).label("avg_score")
+        ).filter(AnalysisWord.analysis_id.in_(analysis_ids)).group_by(func.lower(AnalysisWord.word)).all()
         
-        # Vowels
-        vowel_stats = [{"vowel": k, "frequency": v, "deviation": min(100, v*15)} for k, v in sorted(vowel_errors_tally.items(), key=lambda i: i[1], reverse=True)[:5]]
+        prev_analysis_ids = [record.id for record in previous_period_analyses]
+        prev_words_query = []
+        if prev_analysis_ids:
+            prev_words_query = self.db.query(
+                func.lower(AnalysisWord.word).label("word"),
+                func.avg(AnalysisWord.overall_score).label("avg_score")
+            ).filter(AnalysisWord.analysis_id.in_(prev_analysis_ids)).group_by(func.lower(AnalysisWord.word)).all()
+        prev_words_map = {w.word: float(w.avg_score or 0) for w in prev_words_query}
+        
+        word_stats = []
+        for w in words_query:
+            attempts = w.attempts
+            unique_sessions = w.unique_sessions
+            avg_score = float(w.avg_score or 0)
+            
+            conf = "Low"
+            if unique_sessions >= 2:
+                conf = "High"
+            elif attempts >= 2:
+                conf = "Medium"
+                
+            trend = None
+            if w.word in prev_words_map:
+                trend = round(avg_score - prev_words_map[w.word], 1)
+
+            word_stats.append({
+                "word": w.word,
+                "attempts": attempts,
+                "unique_sessions": unique_sessions,
+                "avg_score": round(avg_score, 1),
+                "confidence": conf,
+                "trend": trend,
+                "error_rate": 0 # kept for compatibility with insights if needed, but not used in UI
+            })
+            
+        conf_rank = {"High": 0, "Medium": 1, "Low": 2}
+        sort_key_words = lambda x: (conf_rank[x["confidence"]], -x["unique_sessions"], x["avg_score"])
+        
+        word_stats.sort(key=sort_key_words)
+        top_words = word_stats[:5]
+
+        # Phoneme Analytics aggregation using SQL
+        phonemes_query = self.db.query(
+            func.lower(AnalysisPhoneme.phoneme).label("phoneme"),
+            func.count(AnalysisPhoneme.id).label("attempts"),
+            func.count(func.distinct(AnalysisPhoneme.analysis_id)).label("unique_sessions"),
+            func.sum(case((AnalysisPhoneme.pronunciation_score < 75, 1), else_=0)).label("errors"),
+            func.avg(AnalysisPhoneme.pronunciation_score).label("avg_score")
+        ).filter(AnalysisPhoneme.analysis_id.in_(analysis_ids)).group_by(func.lower(AnalysisPhoneme.phoneme)).all()
+        
+        prev_phonemes_query = []
+        if prev_analysis_ids:
+            prev_phonemes_query = self.db.query(
+                func.lower(AnalysisPhoneme.phoneme).label("phoneme"),
+                func.avg(AnalysisPhoneme.pronunciation_score).label("avg_score")
+            ).filter(AnalysisPhoneme.analysis_id.in_(prev_analysis_ids)).group_by(func.lower(AnalysisPhoneme.phoneme)).all()
+        prev_phonemes_map = {p.phoneme: float(p.avg_score or 0) for p in prev_phonemes_query}
+        
+        phoneme_stats = []
+        for p in phonemes_query:
+            attempts = p.attempts
+            unique_sessions = p.unique_sessions
+            avg_score = float(p.avg_score or 0)
+            
+            conf = "Low"
+            if unique_sessions >= 2:
+                conf = "High"
+            elif attempts >= 2:
+                conf = "Medium"
+                
+            errors = p.errors or 0
+            error_rate = (errors / attempts * 100) if attempts > 0 else 0
+            accuracy = 100 - error_rate
+            
+            trend = None
+            if p.phoneme in prev_phonemes_map:
+                trend = round(avg_score - prev_phonemes_map[p.phoneme], 1)
+
+            phoneme_stats.append({
+                "phoneme": p.phoneme,
+                "attempts": attempts,
+                "unique_sessions": unique_sessions,
+                "avg_score": round(avg_score, 1),
+                "accuracy": round(accuracy, 1),
+                "error_rate": round(error_rate, 1),
+                "errors": int(errors),
+                "confidence": conf,
+                "trend": trend
+            })
+            
+        vowel_set = {"a", "i", "u", "e", "o", "ɛ", "ɔ"}
+        vowels = [p for p in phoneme_stats if p["phoneme"] in vowel_set]
+        consonants = [p for p in phoneme_stats if p["phoneme"] not in vowel_set]
+        
+        sort_key_phonemes = lambda x: (conf_rank[x["confidence"]], -x["unique_sessions"], x["avg_score"])
+        
+        def get_top_phonemes(phoneme_list, limit=5):
+            phoneme_list.sort(key=sort_key_phonemes)
+            return phoneme_list[:limit]
+
+        top_diff_phonemes = get_top_phonemes(consonants)
+        vowel_stats = get_top_phonemes(vowels)
         
         # Speaking Stats
         speaking_stats = {
             "wpm": round(avg(wpm_total), 1),
-            "avg_pause_duration": round(avg(pause_duration_total), 2),
+            "pause_ratio": round(avg(pause_ratio_total), 2),
             "speech_ratio": round(min(100, avg(user_scores["fluency"]) + 10), 1)
         }
         
-        # AI Insight
-        recent_f = avg(recent_fluency)
-        old_f = avg(old_fluency)
-        fluency_imp = recent_f - old_f if old_f > 0 else 0
-        
-        diffs = {
-            "pronunciation": 95 - user_avg["pronunciation"],
-            "fluency": 93 - user_avg["fluency"],
-            "intonation": 91 - user_avg["intonation"],
-            "clarity": 95 - user_avg["clarity"]
+        # AI Insight strictly from generated data
+        scores_map = {
+            "Pronunciation": user_avg["pronunciation"],
+            "Fluency": user_avg["fluency"],
+            "Intonation": user_avg["intonation"],
+            "Rhythm": user_avg["rhythm"]
         }
-        best_dim = min(diffs, key=diffs.get)
         
-        insight_msg = f"Your {best_dim} is closest to native speakers. "
-        if top_diff_phonemes:
-             insight_msg += f"Most noticeable difference remains the /{top_diff_phonemes[0]['phoneme']}/ articulation. "
-        if fluency_imp > 0:
-             insight_msg += f"Fluency improved by {fluency_imp:.1f}% compared with previous week."
+        best_dim = max(scores_map, key=scores_map.get)
+        worst_dim = min(scores_map, key=scores_map.get)
+        
+        insight_msg = f"Your strongest area is {best_dim} ({round(scores_map[best_dim], 1)}). "
+        insight_msg += f"Your weakest area is {worst_dim} ({round(scores_map[worst_dim], 1)}). "
+        
+        if top_words and top_words[0]["error_rate"] > 0:
+             insight_msg += f"The most problematic word is '{top_words[0]['word']}' ({top_words[0]['error_rate']}% error rate). "
+        
+        all_diff_phonemes = sorted(phoneme_stats, key=lambda i: (-i["error_rate"], i["avg_score"]))
+        if all_diff_phonemes and all_diff_phonemes[0]["error_rate"] > 0:
+             insight_msg += f"The most frequent phoneme issue is /{all_diff_phonemes[0]['phoneme']}/ ({all_diff_phonemes[0]['errors']} errors)."
 
         return {
-            "pronunciationComparison": [
-                {"name": "Pronunciation", "You": round(user_avg["pronunciation"], 1), "Native Male": native_male["pronunciation"], "Native Female": native_female["pronunciation"]}
-            ],
-            "fluencyComparison": [
-                {"name": "Fluency", "You": round(user_avg["fluency"], 1), "Native Male": native_male["fluency"], "Native Female": native_female["fluency"]}
-            ],
-            "intonationComparison": [
-                {"name": "Intonation", "You": round(user_avg["intonation"], 1), "Native Male": native_male["intonation"], "Native Female": native_female["intonation"]}
-            ],
-            "clarityComparison": [
-                {"name": "Clarity", "You": round(user_avg["clarity"], 1), "Native Male": native_male["clarity"], "Native Female": native_female["clarity"]}
-            ],
+            "summary": {
+                "pronunciation": round(user_avg["pronunciation"], 1),
+                "fluency": round(user_avg["fluency"], 1),
+                "intonation": round(user_avg["intonation"], 1),
+                "rhythm": round(user_avg["rhythm"], 1)
+            },
+            "changes": changes,
+            "progress": progress,
             "radarData": radar_data,
             "wordStatistics": top_words,
             "phonemeStatistics": top_diff_phonemes,
@@ -161,23 +308,32 @@ class ComparisonAnalyticsService:
             "aiInsights": insight_msg
         }
 
-    def _empty_response(self, male: dict, female: dict) -> Dict[str, Any]:
+    def _empty_response(self) -> Dict[str, Any]:
         radar_data = [
-            {"dimension": "Pronunciation", "You": 0, "Native Reference": 95},
-            {"dimension": "Fluency", "You": 0, "Native Reference": 93},
-            {"dimension": "Intonation", "You": 0, "Native Reference": 91},
-            {"dimension": "Clarity", "You": 0, "Native Reference": 95},
-            {"dimension": "Similarity", "You": 0, "Native Reference": 100},
+            {"dimension": "Pronunciation", "You": 0},
+            {"dimension": "Fluency", "You": 0},
+            {"dimension": "Intonation", "You": 0},
+            {"dimension": "Rhythm", "You": 0},
+            {"dimension": "Word Stress", "You": 0},
         ]
         return {
-            "pronunciationComparison": [{"name": "Pronunciation", "You": 0, "Native Male": male["pronunciation"], "Native Female": female["pronunciation"]}],
-            "fluencyComparison": [{"name": "Fluency", "You": 0, "Native Male": male["fluency"], "Native Female": female["fluency"]}],
-            "intonationComparison": [{"name": "Intonation", "You": 0, "Native Male": male["intonation"], "Native Female": female["intonation"]}],
-            "clarityComparison": [{"name": "Clarity", "You": 0, "Native Male": male["clarity"], "Native Female": female["clarity"]}],
+            "summary": {
+                "pronunciation": 0,
+                "fluency": 0,
+                "intonation": 0,
+                "rhythm": 0
+            },
+            "changes": {
+                "pronunciation": None,
+                "fluency": None,
+                "intonation": None,
+                "rhythm": None
+            },
+            "progress": [],
             "radarData": radar_data,
             "wordStatistics": [],
             "phonemeStatistics": [],
             "vowelStatistics": [],
-            "speakingStatistics": {"wpm": 0, "avg_pause_duration": 0, "speech_ratio": 0},
-            "aiInsights": "Complete an analysis to compare your voice with native speakers."
+            "speakingStatistics": {"wpm": 0, "pause_ratio": 0, "speech_ratio": 0},
+            "aiInsights": "Complete an analysis to track your historical progress."
         }

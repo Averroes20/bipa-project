@@ -9,18 +9,28 @@ class AnalyticsAggregationService:
     def __init__(self, db: Session):
         self.db = db
 
-    def get_dashboard_analytics(self, user_id: str) -> Dict[str, Any]:
-        """
-        Fetches all user analyses, parses JSON details in memory, 
-        and calculates detailed multidimensional dashboard metrics.
-        """
-        # Fetch all analyses for user ordered by time ascending
-        analyses = self.db.query(AudioAnalysis).filter(AudioAnalysis.user_id == user_id).order_by(AudioAnalysis.created_at.asc()).all()
+    def get_dashboard_analytics(self, user_id: str, period: str = "all") -> Dict[str, Any]:
+        from sqlalchemy import func, case
+        from app.models.audio_models import AnalysisWord, AnalysisPhoneme
+
+        now = datetime.utcnow()
+        date_filter = None
+        if period == "7d":
+            date_filter = now - timedelta(days=7)
+        elif period == "30d":
+            date_filter = now - timedelta(days=30)
+        elif period == "3m":
+            date_filter = now - timedelta(days=90)
+            
+        query = self.db.query(AudioAnalysis).filter(AudioAnalysis.user_id == user_id)
+        if date_filter:
+            query = query.filter(AudioAnalysis.created_at >= date_filter)
+
+        analyses = query.order_by(AudioAnalysis.created_at.asc()).all()
         
         if not analyses:
             return self._empty_response()
             
-        now = datetime.utcnow()
         seven_days_ago = now - timedelta(days=7)
         
         history = []
@@ -28,14 +38,12 @@ class AnalyticsAggregationService:
         previous_week_scores = []
         total_duration = 0.0
         
-        errors_tally = defaultdict(int)
-        phoneme_errors_tally = defaultdict(int)
-        vowel_errors_tally = defaultdict(int)
-        
         scores_overall = []
-        native_similarity_scores = []
+        word_stress_scores = []
         
+        analysis_ids = []
         for record in analyses:
+            analysis_ids.append(record.id)
             total_duration += (record.duration or 0)
             scores_overall.append(record.final_score)
             
@@ -47,7 +55,6 @@ class AnalyticsAggregationService:
             elif is_prev_week:
                 previous_week_scores.append(record.final_score)
                 
-            # Parse detail
             detail = {}
             try:
                 if record.analysis_detail:
@@ -55,36 +62,18 @@ class AnalyticsAggregationService:
             except Exception:
                 pass
                 
-            dims = detail.get("dimensions", {})
+            dims = detail # Using flat detail object directly
             history.append({
                 "date": record.created_at.strftime("%b %d") if record.created_at else "",
                 "timestamp": record.created_at.timestamp() if record.created_at else 0,
                 "overall": record.final_score,
-                "pronunciation": dims.get("pronunciation", 0) or 0,
-                "fluency": dims.get("fluency", 0) or 0,
-                "intonation": dims.get("intonation", 0) or 0,
-                "clarity": dims.get("clarity", 0) or 0
+                "pronunciation": dims.get("pronunciation_score", 0) or 0,
+                "fluency": dims.get("fluency_score", 0) or 0,
+                "intonation": dims.get("intonation_score", 0) or 0,
+                "rhythm": dims.get("rhythm_score", 0) or 0
             })
-            
-            if dims.get("accent"):
-                native_similarity_scores.append(dims.get("accent"))
-            
-            # Aggregate Errors
-            for err in detail.get("errors", []):
-                word = str(err.get("word", "")).lower()
-                if word:
-                    errors_tally[word] += 1
-            
-            for ph in detail.get("pronunciation", {}).get("phonemes", []):
-                ph_score = ph.get("score", 100)
-                if ph_score < 75:
-                    symbol = str(ph.get("symbol", "")).lower()
-                    if symbol in ["a", "i", "u", "e", "o"]:
-                        vowel_errors_tally[symbol] += 1
-                    elif symbol:
-                        phoneme_errors_tally[symbol] += 1
+            word_stress_scores.append(dims.get("accent_score", 0) or 0)
         
-        # Calculate summary metrics
         avg_score = sum(scores_overall) / len(scores_overall)
         best_score = max(scores_overall)
         lowest_score = min(scores_overall)
@@ -95,16 +84,31 @@ class AnalyticsAggregationService:
         
         latest_dims = history[-1] if history else {}
         
-        # Sort tallies
-        top_words = [{"word": k, "count": v} for k, v in sorted(errors_tally.items(), key=lambda item: item[1], reverse=True)[:5]]
-        top_phonemes = [{"phoneme": k, "count": v} for k, v in sorted(phoneme_errors_tally.items(), key=lambda item: item[1], reverse=True)[:5]]
-        top_vowels = [{"vowel": k, "count": v} for k, v in sorted(vowel_errors_tally.items(), key=lambda item: item[1], reverse=True)[:5]]
+        # Word Analytics aggregation using SQL
+        words_query = self.db.query(
+            func.lower(AnalysisWord.word).label("word"),
+            func.sum(case((AnalysisWord.overall_score < 75, 1), else_=0)).label("errors")
+        ).filter(AnalysisWord.analysis_id.in_(analysis_ids)).group_by(func.lower(AnalysisWord.word)).all()
+        top_words = [{"word": w.word, "count": w.errors} for w in sorted(words_query, key=lambda i: i.errors, reverse=True) if w.errors > 0][:5]
+
+        # Phoneme Analytics aggregation using SQL
+        phonemes_query = self.db.query(
+            func.lower(AnalysisPhoneme.phoneme).label("phoneme"),
+            func.sum(case((AnalysisPhoneme.pronunciation_score < 75, 1), else_=0)).label("errors")
+        ).filter(AnalysisPhoneme.analysis_id.in_(analysis_ids)).group_by(func.lower(AnalysisPhoneme.phoneme)).all()
+        
+        vowel_set = {"a", "i", "u", "e", "o", "ɛ", "ɔ"}
+        vowels = [{"vowel": p.phoneme, "count": p.errors} for p in phonemes_query if p.phoneme in vowel_set and p.errors > 0]
+        consonants = [{"phoneme": p.phoneme, "count": p.errors} for p in phonemes_query if p.phoneme not in vowel_set and p.errors > 0]
+        
+        top_phonemes = sorted(consonants, key=lambda i: i["count"], reverse=True)[:5]
+        top_vowels = sorted(vowels, key=lambda i: i["count"], reverse=True)[:5]
         
         ai_insight = self._generate_ai_insight(weekly_improvement, latest_dims, top_vowels, top_phonemes)
         
         avg_pronunciation = sum(h.get("pronunciation", 0) for h in history) / len(history) if history else 0
         avg_fluency = sum(h.get("fluency", 0) for h in history) / len(history) if history else 0
-        avg_native = sum(native_similarity_scores) / len(native_similarity_scores) if native_similarity_scores else 0
+        avg_word_stress = sum(word_stress_scores) / len(word_stress_scores) if word_stress_scores else 0
 
         return {
             "summary": {
@@ -112,7 +116,7 @@ class AnalyticsAggregationService:
                 "avg_pronunciation": avg_pronunciation,
                 "weekly_improvement": weekly_improvement,
                 "avg_fluency": avg_fluency,
-                "avg_native_similarity": avg_native,
+                "avg_word_stress": avg_word_stress,
             },
             "progress": history,
             "learningStatistics": {
@@ -163,7 +167,7 @@ class AnalyticsAggregationService:
     def _empty_response(self) -> Dict[str, Any]:
         return {
             "summary": {
-                "total_analysis": 0, "avg_pronunciation": 0, "weekly_improvement": 0, "avg_fluency": 0, "avg_native_similarity": 0
+                "total_analysis": 0, "avg_pronunciation": 0, "weekly_improvement": 0, "avg_fluency": 0, "avg_word_stress": 0
             },
             "progress": [],
             "learningStatistics": {
