@@ -22,9 +22,10 @@ venv/
 .env.*
 
 # =========================
-# VSCode
+# VSCode / IDE
 # =========================
 .vscode/
+*.code-workspace
 
 # =========================
 # Pytest / Coverage
@@ -46,12 +47,23 @@ dist/
 uploads/
 dataset/
 
-# Kalau mau tetap simpan foldernya:
+# Kalau mau tetap simpan foldernya (jangan di-uncomment jika tak perlu):
 # uploads/*
 # !uploads/.gitkeep
-
 # dataset/*
 # !dataset/.gitkeep
+
+# =========================
+# Models / Data
+# =========================
+models/
+*.db
+
+# =========================
+# Temp / Scratch
+# =========================
+temp/
+scratch_*.json
 
 # =========================
 # Audio Files
