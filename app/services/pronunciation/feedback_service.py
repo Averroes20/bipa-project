@@ -2,63 +2,69 @@ from typing import Dict, Any, List
 
 class FeedbackService:
     @staticmethod
-    def generate_llm_prompt(
-        word_scores: List[Dict],
-        mispronounced: List[Dict],
-        intonation: Dict,
-        vowel: Dict,
-        scoring: Dict
-    ) -> str:
-        """
-        Constructs the strict prompt to send to the LLM (AI Teacher).
-        """
-        prompt = (
-            "You are an expert Indonesian Language AI Teacher (BIPA).\n"
-            "Analyze the following pronunciation metrics and provide constructive, natural language feedback in Indonesian.\n\n"
-            "Metrics:\n"
-            f"- Overall Score: {scoring.get('overall_score')} / 100\n"
-            f"- Intonation Score: {scoring.get('intonation_score')} / 100 (DTW: {intonation.get('dtw_distance')})\n"
-            f"- Fluency Score: {scoring.get('fluency_score')} / 100\n\n"
-            "Mispronounced Words:\n"
-        )
-        
-        if not mispronounced:
-            prompt += "- None\n"
-        else:
-            for m in mispronounced:
-                prompt += f"- Word: '{m['word']}' (Score: {m['score']}). Reason: {m['reason']}\n"
-                
-        prompt += "\nTask: Give 1 paragraph of praise/summary, and 1 paragraph of specific actionable advice based on the worst metric above. Do not expose raw numbers to the user."
-        return prompt
-
-    @staticmethod
     def generate_feedback(
         word_scores: List[Dict],
         mispronounced: List[Dict],
         intonation: Dict,
         vowel: Dict,
-        scoring: Dict
-    ) -> str:
+        scoring: Dict,
+        accent: Dict = None
+    ) -> Dict[str, List[str]]:
         """
-        In a production environment, this calls an LLM API (OpenAI/Google GenAI) using the prompt.
-        For this prototype, it dynamically constructs a highly specific, natural sounding paragraph 
-        based strictly on the real data, simulating an LLM response without rule-based if/else trees for every condition.
+        Generates specific, rule-based AI Teacher feedback with 3 sections.
         """
-        # We simulate the LLM converting the prompt into natural language:
-        overall = scoring.get("overall_score", 0)
+        strengths = []
+        focus = []
+        practice = []
         
-        feedback = f"Secara keseluruhan, pelafalan bahasa Indonesia Anda mencapai skor {overall}, yang menunjukkan pemahaman dasar yang baik. "
-        
-        if intonation.get("similarity_score", 0) < 60:
-            feedback += "Namun, intonasi dan nada bicara Anda masih terasa kurang natural dibandingkan penutur asli. Cobalah untuk berbicara dengan ritme yang lebih mengalir tanpa memberikan penekanan berlebih. "
+        # 1. Strengths
+        if scoring.get("fluency_score", 0) > 80:
+            strengths.append(f"Fluency sangat stabil ({scoring['fluency_score']}).")
         else:
-            feedback += "Intonasi dan ritme Anda terdengar sangat natural dan mendekati gaya bicara orang Indonesia. "
+            if scoring.get("overall_score", 0) > 75:
+                strengths.append(f"Pengucapan secara keseluruhan cukup jelas dengan skor {scoring.get('overall_score')}.")
+                
+        if accent and accent.get("speaking_rate_wpm", 0) > 130:
+            wpm = round(accent.get("speaking_rate_wpm", 0))
+            strengths.append(f"Tempo bicara berada dalam rentang native ({wpm} WPM).")
             
+        if intonation.get("similarity_score", 0) > 85:
+            strengths.append(f"Pola intonasi sangat mirip dengan native speaker ({intonation['similarity_score']}% kecocokan).")
+            
+        if not strengths:
+            strengths.append("Anda telah berhasil menyelesaikan sesi analisis ini.")
+
+        # 2. Focus Next
         if mispronounced:
             worst_word = mispronounced[0]
-            feedback += f"\n\nPerhatian khusus: Saat mengucapkan kata '{worst_word['word']}', terdengar kurang tepat. {worst_word['reason']} "
-            feedback += "Cobalah berlatih mengulang kata ini secara perlahan, perhatikan panjang pendek vokal dan ketegasan konsonannya agar lebih mudah dipahami."
-        else:
-            feedback += "\n\nHebatnya, Anda tidak memiliki kesalahan pengucapan kata yang signifikan pada sesi ini. Terus pertahankan kelancaran artikulasi Anda!"
+            focus.append(f"Latih kata '{worst_word['word']}' karena skornya masih {worst_word.get('score', 0)}.")
             
-        return feedback
+            # Additional phonetic errors if any
+            if "reason" in worst_word and "Kesalahan fonem" in worst_word["reason"]:
+                focus.append(f"Perhatikan detail fonem pada kata '{worst_word['word']}': {worst_word['reason'].split('Kesalahan fonem: ')[-1]}")
+        elif scoring.get("intonation_score", 0) < 75:
+            focus.append(f"Intonasi Anda (skor {scoring.get('intonation_score')}) perlu lebih bervariasi agar tidak terdengar kaku.")
+        else:
+            focus.append("Pengucapan Anda sangat baik, fokuslah pada mempertahankan ritme bicara Anda.")
+
+        if vowel and "vowels" in vowel:
+            vowels_list = vowel["vowels"]
+            if vowels_list:
+                worst_vowel = min(vowels_list, key=lambda x: x.get("match", 100))
+                if worst_vowel.get("match", 100) < 80:
+                    focus.append(f"Bunyi vokal /{worst_vowel['phoneme']}/ masih kurang tepat ({worst_vowel['match']}% kecocokan).")
+                    
+        # 3. Practice Now
+        if mispronounced:
+            worst_word = mispronounced[0]
+            practice.append(f"Ulangi kata '{worst_word['word']}' sebanyak 5 kali sambil mendengarkan referensi Native.")
+        else:
+            practice.append("Latihlah kalimat ini secara utuh tanpa terputus.")
+            
+        practice.append("Bandingkan pelafalan Anda dengan Native Female/Male menggunakan fitur Playback Comparison.")
+
+        return {
+            "strengths": strengths,
+            "focus": focus,
+            "practice": practice
+        }

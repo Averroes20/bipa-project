@@ -28,15 +28,13 @@ class ScoringService:
         else:
             phoneme_overall = 0.0
             
-        vowel_dists = []
-        for v in vowel_data.get("user_space", []):
-            if v.get("distance_male") is not None and v.get("distance_female") is not None:
-                dist = min(v["distance_male"], v["distance_female"])
-                vowel_dists.append(dist)
+        vowel_matches = []
+        for v in vowel_data.get("vowels", []):
+            if v.get("match") is not None:
+                vowel_matches.append(v["match"])
             
-        if vowel_dists:
-            avg_dist = float(np.mean(vowel_dists))
-            vowel_score = max(0.0, 100.0 - (avg_dist / 300.0) * 100.0)
+        if vowel_matches:
+            vowel_score = float(np.mean(vowel_matches))
         else:
             vowel_score = None
 

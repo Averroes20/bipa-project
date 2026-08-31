@@ -47,33 +47,39 @@ class PhonemeService:
                 ph_score = min(100.0, max(0.0, confidence * 100))
                 word_phoneme_scores.append(ph_score)
                 
-                ph_feedback = None
-                error_type = None
-                
-                if ph_score < 75:
-                    if ph_score < 40:
-                        error_type = "deletion"
-                        ph_feedback = f"Bunyi /{ph}/ hilang atau sangat tidak jelas."
-                    elif ph_score < 60:
-                        error_type = "substitution"
-                        ph_feedback = f"Bunyi /{ph}/ terdengar seperti bunyi lain yang kurang tepat."
-                    elif ph in vowels:
-                        error_type = "vowel_quality_deviation"
+                ph_status = "weak"
+                if ph_score >= 90:
+                    ph_status = "good"
+                elif ph_score >= 75:
+                    ph_status = "acceptable"
+
+                ph_feedback = ""
+                if ph_status == "weak":
+                    if ph in vowels:
                         ph_feedback = f"Vokal /{ph}/ terdengar kurang jelas atau posisinya bergeser."
                     else:
-                        error_type = "weak_articulation"
-                        ph_feedback = f"Konsonan /{ph}/ kurang diartikulasikan dengan tegas."
+                        ph_feedback = f"Konsonan /{ph}/ terdengar terlalu lemah. Lepaskan udara lebih tegas."
+                elif ph_status == "acceptable":
+                    if ph in vowels:
+                        ph_feedback = f"Vokal /{ph}/ sudah cukup jelas, namun bisa lebih bulat."
+                    else:
+                        ph_feedback = f"Konsonan /{ph}/ cukup baik, perjelas sedikit lagi."
+                else:
+                    if ph in vowels:
+                        ph_feedback = f"Vokal /{ph}/ sudah mendekati native."
+                    else:
+                        ph_feedback = f"Konsonan /{ph}/ diucapkan dengan sangat baik."
                 
                 phonemes_data.append({
                     "word_ref": word,
                     "phoneme": ph,
                     "expected": ph,
-                    "detected": ph if error_type != "deletion" else None,
+                    "detected": ph,
                     "start_time": round(curr_time, 3),
                     "end_time": round(curr_time + ph_dur, 3),
                     "confidence": round(confidence, 2),
                     "pronunciation_score": round(ph_score, 2),
-                    "error_type": error_type,
+                    "status": ph_status,
                     "feedback": ph_feedback
                 })
                 curr_time += ph_dur
@@ -112,9 +118,9 @@ class PhonemeService:
                 elif worst_aspect == "stress":
                     reason = "Penekanan suku kata (stress) tidak ditempatkan pada posisi yang tepat."
                     
-                ph_errors = [p for p in phonemes_data if p["word_ref"] == word and p["error_type"]]
+                ph_errors = [p for p in phonemes_data if p["word_ref"] == word and p.get("status") == "weak"]
                 if ph_errors:
-                    ph_reason = ", ".join([f"/{p['phoneme']}/ ({p['error_type']})" for p in ph_errors])
+                    ph_reason = ", ".join([f"/{p['phoneme']}/" for p in ph_errors])
                     reason += f" Kesalahan fonem: {ph_reason}."
                     
                 mispronounced_data.append({

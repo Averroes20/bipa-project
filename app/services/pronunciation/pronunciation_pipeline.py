@@ -174,7 +174,7 @@ class PronunciationPipeline:
         
         af = AnalysisFeedback(
             analysis_id=analysis_id,
-            ai_teacher_feedback=feedback_text
+            ai_teacher_feedback=json.dumps(feedback_text)
         )
         self.db.add(af)
         
@@ -202,7 +202,7 @@ class PronunciationPipeline:
             "pronunciation": {
                 "transcription": final_target_text,
                 "words": [{"word": w["word"], "start": float(w["start_time"]), "end": float(w["end_time"]), "duration": float(w["end_time"]) - float(w["start_time"]), "confidence": float(w["confidence"]), "score": float(w["pronunciation_score"]), "status": next((m["status"] for m in mispronounced if m["word"] == w["word"]), "correct")} for w in evaluated_words],
-                "phonemes": [{"symbol": p["phoneme"], "start": float(p["start_time"]), "end": float(p["end_time"]), "duration": float(p["end_time"]) - float(p["start_time"]), "confidence": float(p["confidence"]), "score": float(p["pronunciation_score"])} for p in phonemes_data],
+                "phonemes": [{"symbol": p["phoneme"], "start": float(p["start_time"]), "end": float(p["end_time"]), "duration": float(p["end_time"]) - float(p["start_time"]), "confidence": float(p["confidence"]), "score": float(p["pronunciation_score"]), "status": p.get("status", "acceptable"), "feedback": p.get("feedback", "")} for p in phonemes_data],
                 "pronunciation_score": scoring.get("pronunciation_score", 0.0),
                 "word_score": scoring.get("word_score", 0.0),
                 "phoneme_score": scoring.get("phoneme_score", 0.0),
@@ -222,10 +222,7 @@ class PronunciationPipeline:
                 "timeline": features.get("pause_timeline", [])
             },
             "phonetics": {
-                "vowel_space": vowel_data.get("user_space", []),
-                "native_male_space": vowel_data.get("native_male_space", {}),
-                "native_female_space": vowel_data.get("native_female_space", {}),
-                "vowels": [{"vowel": v["vowel"], "accuracy": float(v.get("accuracy", 0.0))} for v in vowel_data.get("user_space", [])]
+                "vowel_space": vowel_data
             },
             "articulation": {
                 "zcr": float(features.get("zcr_mean", 0.0)),
@@ -252,24 +249,17 @@ class PronunciationPipeline:
                 "female_contour": intonation_data.get("female_contour", []),
                 "male_similarity": float(intonation_data.get("male_similarity", 0.0)),
                 "female_similarity": float(intonation_data.get("female_similarity", 0.0)),
-                "preferred_reference": intonation_data.get("preferred_reference", "Unknown")
-            },
-            "phoneme_detection": {
-                "critical_phonemes_accuracy": scoring.get("phoneme_score", 0.0),
-                "details": phonemes_data
-            },
-            "vowel_analysis": {
-                "vowels": vowel_data.get("user_space", []),
-                "f1_mean": float(vowel_data.get("f1_mean", 0)),
-                "f2_mean": float(vowel_data.get("f2_mean", 0)),
-                "f3_mean": float(vowel_data.get("f3_mean", 0)),
-                "vsa": float(vowel_data.get("vsa", 0))
+                "preferred_reference": intonation_data.get("preferred_reference", "Unknown"),
+                "pitch_insight": intonation_data.get("pitch_insight", {})
             },
             "errors": mispronounced,
-            "recommendation": [
-                {"type": "Strength", "message": "Your overall attempt was recorded successfully."},
-                {"type": "Feedback", "message": feedback_text}
-            ],
+            "teacher": feedback_text,
+            "recommendation": [],
+            "playback": {
+                "user": temp_path.replace("\\", "/").split("/")[-1] if temp_path else "",
+                "male": f"dataset/native/male/{final_target_text}.wav",
+                "female": f"dataset/native/female/{final_target_text}.wav"
+            },
             "analysisMetadata": {"processed": True}
         }
         

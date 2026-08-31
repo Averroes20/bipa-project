@@ -42,6 +42,52 @@ class IntonationService:
         return float(similarity), float(distance), float(correlation), n_interp
 
     @staticmethod
+    def analyze_pitch_pattern(user_contour: List[float], native_contour: List[float]) -> Dict[str, Any]:
+        if not user_contour or not native_contour:
+            return {}
+            
+        u_np = np.array(user_contour)
+        n_np = np.array(native_contour)
+        
+        if len(u_np) < 5 or len(n_np) < 5:
+            return {}
+            
+        # Terminal drop is difference between last 10% and the previous 20%
+        # Or simpler: just the difference between start and end of the contour
+        u_drop = u_np[-1] - u_np[0]
+        n_drop = n_np[-1] - n_np[0]
+        
+        diff = abs(u_drop - n_drop)
+        
+        if u_drop < -20:
+            pattern = "falling"
+        elif u_drop > 20:
+            pattern = "rising"
+        elif abs(u_drop) <= 20 and abs(n_drop) <= 20:
+            pattern = "flat"
+        else:
+            pattern = "overshoot"
+            
+        if diff < 10:
+            summary = f"Kalimat Anda berakhir dengan pola {pattern} yang sangat mendekati native speaker."
+            rec = "Pertahankan intonasi ini pada kalimat serupa."
+        elif diff <= 25:
+            summary = f"Pola {pattern} Anda cukup baik, namun sedikit berbeda tingkatannya dengan native."
+            rec = "Perhatikan seberapa tajam nada Anda di akhir kalimat."
+        else:
+            summary = f"Pola intonasi Anda jauh berbeda dari native speaker."
+            rec = "Cobalah untuk lebih mendengarkan dan meniru pergerakan nada di akhir kalimat."
+
+        return {
+            "pattern": pattern,
+            "terminal_drop_hz": round(abs(u_drop), 1),
+            "native_drop_hz": round(abs(n_drop), 1),
+            "difference_hz": round(diff, 1),
+            "summary": summary,
+            "recommendation": rec
+        }
+
+    @staticmethod
     def compare_contours(user_contour: List[float], male_contour: List[float], female_contour: List[float]) -> Dict[str, Any]:
         """
         Compares two pitch contours using DTW, Correlation, and Movement.
@@ -59,7 +105,8 @@ class IntonationService:
                 "preferred_reference": "Unknown",
                 "pattern": "neutral",
                 "sentence_ending": "neutral",
-                "pitch_variance": 0.0
+                "pitch_variance": 0.0,
+                "pitch_insight": {}
             }
             
         u_np = np.array(user_contour).flatten()
@@ -95,6 +142,9 @@ class IntonationService:
             pattern = "monotone"
         else:
             pattern = "natural"
+            
+        native_contour = f_interp if pref == "Female" else m_interp
+        pitch_insight = IntonationService.analyze_pitch_pattern(u_np.tolist(), native_contour.tolist())
 
         return {
             "user_contour": [float(x) for x in u_np],
@@ -108,5 +158,6 @@ class IntonationService:
             "preferred_reference": pref,
             "pattern": pattern,
             "sentence_ending": ending,
-            "pitch_variance": round(variance, 2)
+            "pitch_variance": round(variance, 2),
+            "pitch_insight": pitch_insight
         }
